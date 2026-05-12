@@ -1,12 +1,6 @@
 import { Route, Routes } from 'react-router-dom'
 
-function InputFormPage() {
-  return (
-    <div className="min-h-screen bg-[#0f1117] text-[#e8eaf0] flex items-center justify-center">
-      <div className="text-[#8891a8] text-lg">Input Form</div>
-    </div>
-  )
-}
+import InputFormPage from './features/input-form'
 
 function TimelinePage() {
   return (
