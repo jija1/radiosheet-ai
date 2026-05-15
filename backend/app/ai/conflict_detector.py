@@ -291,17 +291,33 @@ def _check_c005(segments: list[Segment]) -> list[Conflict]:
 # ---------------------------------------------------------------------------
 
 def _fix_insert(segments: list[Segment], fix: dict) -> list[Segment]:
-    """Insert a new segment before the segment at affected_index."""
-    idx      = fix["affected_index"]
+    """Insert a new segment using either affected_index (C001) or at_minute (C003)."""
     seg_type = SegmentType(fix["type"])
     duration = fix["duration_minutes"]
 
-    if 0 < idx <= len(segments):
-        start_mins = _hhmm_to_minutes(segments[idx - 1].end_time)
-    elif segments:
-        start_mins = _hhmm_to_minutes(segments[0].start_time)
+    if "affected_index" in fix:
+        # C001 path: insert before the segment at the given index
+        idx = fix["affected_index"]
+        if 0 < idx <= len(segments):
+            start_mins = _hhmm_to_minutes(segments[idx - 1].end_time)
+        elif segments:
+            start_mins = _hhmm_to_minutes(segments[0].start_time)
+        else:
+            start_mins = 0
     else:
-        start_mins = 0
+        # C003 path: insert at the segment that contains at_minute
+        at_minute = fix["at_minute"]
+        prog_start = _hhmm_to_minutes(segments[0].start_time) if segments else 0
+        target_abs = prog_start + at_minute
+
+        # Find the first segment that starts at or after the target minute
+        idx = len(segments)
+        for i, seg in enumerate(segments):
+            if _hhmm_to_minutes(seg.start_time) >= target_abs:
+                idx = i
+                break
+
+        start_mins = target_abs
 
     colour   = _COLOURS.get(seg_type, "#3b82f6")
     name_map = {

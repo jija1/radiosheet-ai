@@ -20,9 +20,9 @@ export function ConflictPanel({ conflicts, onApplyFix, fixingConflictId }: Confl
         </div>
       ) : (
         <div className="space-y-2">
-          {conflicts.map(conflict => (
+          {conflicts.map((conflict, index) => (
             <div
-              key={conflict.rule_id}
+              key={`${conflict.rule_id}-${index}`}
               className="bg-[#1f1520] border border-red-900/30 rounded-lg p-3"
             >
               {/* Header row */}
