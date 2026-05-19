@@ -6,6 +6,8 @@ import type { DashboardData } from '../../api/user'
 import { getRunsheet } from '../../api/runsheet'
 import { useAuthStore } from '../../store/authStore'
 import { useRunsheetStore } from '../../store/runsheetStore'
+import { NavBar } from '../../components/layout/NavBar'
+import { Spinner } from '../../components/ui/Spinner'
 import { getInitials } from '../profile'
 
 function formatProgrammeType(raw: string): string {
@@ -62,59 +64,29 @@ export default function DashboardPage() {
     }
   }
 
+  const profileAvatar = (
+    <button onClick={() => navigate('/profile')} title="Profile" className="shrink-0">
+      <div
+        className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold"
+        style={{ backgroundColor: '#2E75B6' }}
+      >
+        {getInitials(user?.display_name, user?.email ?? '?')}
+      </div>
+    </button>
+  )
+
+  const navItems = [
+    { label: 'New Run-sheet', to: '/' },
+    { label: 'Validate',      to: '/validate' },
+    { label: 'Settings',      to: '/settings' },
+    { label: 'Sign out', onClick: () => { logout(); navigate('/login') }, danger: true as const },
+  ]
+
   return (
     <div className="min-h-screen bg-[#0f1117] text-[#e8eaf0]">
-      {/* Top bar */}
-      <header className="border-b border-[#1e2133] bg-[#13151f] px-6 py-3 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <div className="w-7 h-7 rounded-lg bg-[#1a2a4a] flex items-center justify-center">
-            <span className="text-[#2E75B6] font-bold text-xs">R</span>
-          </div>
-          <span className="text-[#e8eaf0] font-medium text-sm">
-            Radio<span className="text-[#2E75B6]">Sheet</span> AI
-          </span>
-        </div>
-        <div className="flex items-center gap-4">
-          <button
-            onClick={() => navigate('/')}
-            className="text-[#8891a8] hover:text-[#e8eaf0] text-sm transition-colors"
-          >
-            New Run-sheet
-          </button>
-          <button
-            onClick={() => navigate('/validate')}
-            className="text-[#8891a8] hover:text-[#e8eaf0] text-sm transition-colors"
-          >
-            Validate
-          </button>
-          <button
-            onClick={() => navigate('/settings')}
-            className="text-[#8891a8] hover:text-[#e8eaf0] text-sm transition-colors"
-          >
-            Settings
-          </button>
-          <button
-            onClick={() => navigate('/profile')}
-            className="shrink-0"
-            title="Profile"
-          >
-            <div
-              className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold"
-              style={{ backgroundColor: '#2E75B6' }}
-            >
-              {getInitials(user?.display_name, user?.email ?? '?')}
-            </div>
-          </button>
-          <button
-            onClick={() => { logout(); navigate('/login') }}
-            className="text-[#8891a8] hover:text-[#ef4444] text-sm transition-colors"
-          >
-            Sign out
-          </button>
-        </div>
-      </header>
+      <NavBar items={navItems} rightFixed={profileAvatar} />
 
-      <main className="max-w-5xl mx-auto px-6 py-8 space-y-8">
+      <main className="max-w-5xl mx-auto px-4 md:px-6 py-8 space-y-8">
         {/* Welcome */}
         <div>
           <h1 className="text-2xl font-semibold text-[#2E75B6]">Dashboard</h1>
@@ -152,64 +124,68 @@ export default function DashboardPage() {
           <div className="bg-[#13151f] border border-[#1e2133] rounded-xl overflow-hidden">
             {data && data.recent_runsheets.length === 0 && (
               <p className="text-[#8891a8] text-sm text-center py-10">
-                No run-sheets yet.{' '}
+                No run-sheets yet —{' '}
                 <button
                   onClick={() => navigate('/')}
                   className="text-[#2E75B6] hover:underline"
                 >
-                  Generate your first one.
+                  generate your first one
                 </button>
               </p>
             )}
 
             {data && data.recent_runsheets.length > 0 && (
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-[#1e2133] text-[#8891a8] text-xs uppercase tracking-wide">
-                    <th className="text-left px-4 py-3">Date</th>
-                    <th className="text-left px-4 py-3">Station</th>
-                    <th className="text-left px-4 py-3">Programme Type</th>
-                    <th className="text-right px-4 py-3">Score</th>
-                    <th className="text-right px-4 py-3">Conflicts</th>
-                    <th className="px-4 py-3" />
-                  </tr>
-                </thead>
-                <tbody>
-                  {data.recent_runsheets.map((rs, idx) => (
-                    <tr
-                      key={rs.runsheet_id}
-                      className={`border-b border-[#1e2133] last:border-0 ${idx % 2 === 1 ? 'bg-[#0f1117]' : ''}`}
-                    >
-                      <td className="px-4 py-3 text-[#8891a8]">{formatDate(rs.broadcast_date)}</td>
-                      <td className="px-4 py-3 text-[#e8eaf0] font-medium">{rs.station_name}</td>
-                      <td className="px-4 py-3 text-[#8891a8]">{formatProgrammeType(rs.programme_type)}</td>
-                      <td className="px-4 py-3 text-right">
-                        <span
-                          className={`font-medium ${
-                            rs.score >= 80 ? 'text-[#22c55e]' : rs.score >= 60 ? 'text-[#f59e0b]' : 'text-[#ef4444]'
-                          }`}
-                        >
-                          {rs.score.toFixed(0)}%
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-right">
-                        <span className={rs.conflict_count > 0 ? 'text-[#ef4444]' : 'text-[#22c55e]'}>
-                          {rs.conflict_count}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-right">
-                        <button
-                          onClick={() => handleLoad(rs.runsheet_id)}
-                          disabled={loadingId === rs.runsheet_id}
-                          className="bg-[#2E75B6] hover:bg-[#1a5ea8] disabled:opacity-60 text-white text-xs px-3 py-1.5 rounded-lg transition-colors"
-                        >
-                          {loadingId === rs.runsheet_id ? 'Loading…' : 'Load'}
-                        </button>
-                      </td>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm min-w-[520px]">
+                  <thead>
+                    <tr className="border-b border-[#1e2133] text-[#8891a8] text-xs uppercase tracking-wide">
+                      <th className="text-left px-4 py-3">Date</th>
+                      <th className="text-left px-4 py-3">Station</th>
+                      <th className="text-left px-4 py-3 hidden sm:table-cell">Programme Type</th>
+                      <th className="text-right px-4 py-3">Score</th>
+                      <th className="text-right px-4 py-3 hidden sm:table-cell">Conflicts</th>
+                      <th className="px-4 py-3" />
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {data.recent_runsheets.map((rs, idx) => (
+                      <tr
+                        key={rs.runsheet_id}
+                        className={`border-b border-[#1e2133] last:border-0 ${idx % 2 === 1 ? 'bg-[#0f1117]' : ''}`}
+                      >
+                        <td className="px-4 py-3 text-[#8891a8]">{formatDate(rs.broadcast_date)}</td>
+                        <td className="px-4 py-3 text-[#e8eaf0] font-medium">{rs.station_name}</td>
+                        <td className="px-4 py-3 text-[#8891a8] hidden sm:table-cell">{formatProgrammeType(rs.programme_type)}</td>
+                        <td className="px-4 py-3 text-right">
+                          <span
+                            className={`font-medium ${
+                              rs.score >= 80 ? 'text-[#22c55e]' : rs.score >= 60 ? 'text-[#f59e0b]' : 'text-[#ef4444]'
+                            }`}
+                          >
+                            {rs.score.toFixed(0)}%
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-right hidden sm:table-cell">
+                          <span className={rs.conflict_count > 0 ? 'text-[#ef4444]' : 'text-[#22c55e]'}>
+                            {rs.conflict_count}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          <button
+                            onClick={() => handleLoad(rs.runsheet_id)}
+                            disabled={loadingId === rs.runsheet_id}
+                            className="bg-[#2E75B6] hover:bg-[#1a5ea8] disabled:opacity-60 text-white text-xs px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5"
+                          >
+                            {loadingId === rs.runsheet_id ? (
+                              <><Spinner size={12} /> Loading…</>
+                            ) : 'Load'}
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             )}
 
             {!data && !error && (

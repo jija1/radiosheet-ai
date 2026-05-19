@@ -2,6 +2,7 @@ import { useState } from 'react'
 
 import { applyFix as applyFixApi } from '../../../api/conflicts'
 import { useRunsheetStore } from '../../../store/runsheetStore'
+import { useToastStore } from '../../../store/toastStore'
 import { useUiStore } from '../../../store/uiStore'
 import type { Conflict } from '../../../types/runsheet'
 
@@ -12,6 +13,7 @@ export function useApplyFix(runsheetId: string) {
   const updateConflicts = useRunsheetStore(s => s.updateConflicts)
   const setCompliance   = useRunsheetStore(s => s.setCompliance)
   const setApplyingFix  = useUiStore(s => s.setApplyingFix)
+  const toast           = useToastStore()
 
   async function applyFix(conflict: Conflict) {
     setIsApplying(true)
@@ -28,8 +30,10 @@ export function useApplyFix(runsheetId: string) {
         response.compliance_risk,
         response.compliance_violations,
       )
+      toast.success('Conflict fix applied')
     } catch (err) {
-      console.error('Apply fix failed:', err)
+      const msg = err instanceof Error ? err.message : 'Failed to apply fix'
+      toast.error(msg)
     } finally {
       setIsApplying(false)
       setApplyingFix(null)

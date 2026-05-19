@@ -2,6 +2,7 @@ import { useState } from 'react'
 
 import { saveUpdatedSegments } from '../../../api/runsheet'
 import { useRunsheetStore } from '../../../store/runsheetStore'
+import { useToastStore } from '../../../store/toastStore'
 import type { Segment } from '../../../types/runsheet'
 
 export function useUpdateSegments(runsheetId: string) {
@@ -12,6 +13,7 @@ export function useUpdateSegments(runsheetId: string) {
   const updateConflicts = useRunsheetStore(s => s.updateConflicts)
   const updateStats     = useRunsheetStore(s => s.updateStats)
   const setCompliance   = useRunsheetStore(s => s.setCompliance)
+  const toast           = useToastStore()
 
   async function saveSegments(segments: Segment[]): Promise<boolean> {
     setIsSaving(true)
@@ -22,9 +24,12 @@ export function useUpdateSegments(runsheetId: string) {
       updateConflicts(res.conflicts)
       updateStats(res.stats)
       setCompliance(res.compliance_score, res.compliance_risk, res.compliance_violations)
+      toast.success('Segments saved')
       return true
-    } catch {
-      setError('Failed to save segments.')
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Failed to save segments'
+      setError(msg)
+      toast.error(msg)
       return false
     } finally {
       setIsSaving(false)

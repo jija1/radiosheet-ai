@@ -23,6 +23,7 @@ import { useAuthStore } from '../../store/authStore'
 import { useUiStore } from '../../store/uiStore'
 import { getInitials } from '../profile'
 import { SEGMENT_COLOURS } from '../../utils/colours'
+import { NavBar } from '../../components/layout/NavBar'
 import { ConflictPanel } from './components/ConflictPanel'
 import { RecommendationsPanel } from './components/RecommendationsPanel'
 import { SegmentCard } from './components/SegmentCard'
@@ -111,8 +112,6 @@ export default function TimelinePage() {
 
     const reordered = arrayMove(segments, oldIndex, newIndex)
 
-    // Pin the first segment to the programme start so backend _recalc_times
-    // anchors from the correct time regardless of which segment moved to position 0.
     const progStart = currentRunsheet!.programme_input.start_time
     const withFixedStart = reordered.map((seg, i) =>
       i === 0 ? { ...seg, start_time: progStart } : seg,
@@ -185,61 +184,67 @@ export default function TimelinePage() {
 
   const { station_name, presenter_name } = currentRunsheet.programme_input
 
+  const complianceColour =
+    complianceRisk === 'compliant' ? '#22c55e'
+    : complianceRisk === 'moderate' ? '#f59e0b'
+    : '#ef4444'
+
+  const complianceBadge = (
+    <span
+      className="text-xs font-semibold px-2.5 py-1 rounded-full"
+      style={{
+        backgroundColor: `${complianceColour}22`,
+        color: complianceColour,
+        border: `1px solid ${complianceColour}55`,
+      }}
+      title={`Broadcasting compliance: ${complianceRisk}`}
+    >
+      {complianceScore}% {complianceRisk}
+    </span>
+  )
+
+  const profileAvatar = (
+    <Link to="/profile" title="Profile" className="shrink-0">
+      <div
+        className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold"
+        style={{ backgroundColor: '#2E75B6' }}
+      >
+        {getInitials(authUser?.display_name, authUser?.email ?? '?')}
+      </div>
+    </Link>
+  )
+
+  const subtitle = (
+    <>
+      <span className="text-[#e8eaf0] font-medium hidden md:inline">
+        — <span className="text-[#3b82f6]">{station_name}</span>
+      </span>
+      <span className="text-[#8891a8] text-xs ml-1 hidden md:inline">· {presenter_name}</span>
+    </>
+  )
+
+  const navItems = [
+    { label: '← Back to form', to: '/' },
+    { label: 'Validate',       to: '/validate' },
+    { label: 'Export ↗',       to: '/export' },
+    { label: 'Settings',       to: '/settings' },
+    { label: 'Sign out', onClick: () => { logout(); navigate('/login', { replace: true }) }, danger: true as const },
+  ]
+
   /* ── Layout ───────────────────────────────────────────────────────── */
   return (
     <div className="h-screen bg-[#0f1117] flex flex-col overflow-hidden">
 
-      {/* Top nav */}
-      <div className="bg-[#13151f] border-b border-[#1e2133] px-6 py-3 flex items-center justify-between shrink-0">
-        <div className="flex items-center gap-3">
-          <div className="w-7 h-7 rounded-lg bg-[#1a2a4a] flex items-center justify-center">
-            <span className="text-[#3b82f6] font-bold text-xs">R</span>
+      <NavBar
+        subtitle={subtitle}
+        rightFixed={
+          <div className="flex items-center gap-2">
+            {complianceBadge}
+            {profileAvatar}
           </div>
-          <div>
-            <span className="text-[#e8eaf0] font-medium">
-              Run-sheet — <span className="text-[#3b82f6]">{station_name}</span>
-            </span>
-            <span className="text-[#8891a8] text-xs ml-2">· {presenter_name}</span>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-4">
-          {/* Compliance badge */}
-          {(() => {
-            const colour =
-              complianceRisk === 'compliant' ? '#22c55e'
-              : complianceRisk === 'moderate' ? '#f59e0b'
-              : '#ef4444'
-            return (
-              <span
-                className="text-xs font-semibold px-2.5 py-1 rounded-full"
-                style={{ backgroundColor: `${colour}22`, color: colour, border: `1px solid ${colour}55` }}
-                title={`Broadcasting compliance: ${complianceRisk}`}
-              >
-                {complianceScore}% {complianceRisk}
-              </span>
-            )
-          })()}
-          <Link to="/"          className="text-[#8891a8] text-sm hover:text-[#e8eaf0] transition-colors">← Back to form</Link>
-          <Link to="/validate"  className="text-[#8891a8] text-sm hover:text-[#e8eaf0] transition-colors">Validate</Link>
-          <Link to="/export"    className="text-[#8891a8] text-sm hover:text-[#e8eaf0] transition-colors">Export ↗</Link>
-          <Link to="/settings"  className="text-[#8891a8] text-sm hover:text-[#e8eaf0] transition-colors">Settings</Link>
-          <Link to="/profile" title="Profile" className="shrink-0">
-            <div
-              className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold"
-              style={{ backgroundColor: '#2E75B6' }}
-            >
-              {getInitials(authUser?.display_name, authUser?.email ?? '?')}
-            </div>
-          </Link>
-          <button
-            onClick={() => { logout(); navigate('/login', { replace: true }) }}
-            className="text-[#8891a8] text-sm hover:text-[#ef4444] transition-colors"
-          >
-            Sign out
-          </button>
-        </div>
-      </div>
+        }
+        items={navItems}
+      />
 
       {/* Stats bar */}
       <StatsBar stats={stats} conflictCount={conflicts.length} recommendationCount={recommendations.length} />
@@ -248,7 +253,7 @@ export default function TimelinePage() {
       <div className="flex flex-1 overflow-hidden">
 
         {/* Left: sortable segment list */}
-        <div className="flex-1 overflow-y-auto flex flex-col">
+        <div className="flex-1 overflow-y-auto flex flex-col min-w-0">
           {segments.length === 0 ? (
             <div className="flex items-center justify-center flex-1 text-[#8891a8]">
               No segments. Add one below.
@@ -288,8 +293,8 @@ export default function TimelinePage() {
           </div>
         </div>
 
-        {/* Right: panels */}
-        <div className="w-80 shrink-0 border-l border-[#1e2133] overflow-y-auto p-4 space-y-6">
+        {/* Right: panels — hidden on small screens, accessible via scroll */}
+        <div className="w-72 md:w-80 shrink-0 border-l border-[#1e2133] overflow-y-auto p-4 space-y-6">
           <ConflictPanel
             conflicts={conflicts}
             onApplyFix={applyFix}

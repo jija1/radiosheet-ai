@@ -3,18 +3,38 @@ import type { ChangeEvent, FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 
 import { apiRegister } from '../../api/auth'
+import { Spinner } from '../../components/ui/Spinner'
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 export default function RegisterPage() {
   const [email, setEmail]       = useState('')
   const [password, setPassword] = useState('')
   const [confirm, setConfirm]   = useState('')
+  const [emailErr, setEmailErr] = useState<string | null>(null)
   const [error, setError]       = useState<string | null>(null)
   const [loading, setLoading]   = useState(false)
 
   const navigate = useNavigate()
 
+  function handleEmailChange(e: ChangeEvent<HTMLInputElement>) {
+    const val = e.target.value
+    setEmail(val)
+    if (val && !EMAIL_RE.test(val.trim())) {
+      setEmailErr('Enter a valid email address')
+    } else {
+      setEmailErr(null)
+    }
+  }
+
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault()
+    const trimmedEmail = email.trim()
+    if (!EMAIL_RE.test(trimmedEmail)) {
+      setEmailErr('Enter a valid email address')
+      return
+    }
+
     setError(null)
 
     if (password.length < 8) {
@@ -28,7 +48,7 @@ export default function RegisterPage() {
 
     setLoading(true)
     try {
-      await apiRegister(email.trim(), password)
+      await apiRegister(trimmedEmail, password)
       navigate('/login', { replace: true })
     } catch (err: unknown) {
       const msg =
@@ -41,6 +61,8 @@ export default function RegisterPage() {
 
   const inputCls =
     'w-full bg-[#0f1117] border border-[#1e2133] rounded-lg px-3 py-2 text-[#e8eaf0] text-sm placeholder-[#8891a8] focus:outline-none focus:border-[#2E75B6] transition-colors'
+  const inputErrCls =
+    'w-full bg-[#0f1117] border border-[#ef4444] rounded-lg px-3 py-2 text-[#e8eaf0] text-sm placeholder-[#8891a8] focus:outline-none focus:border-[#ef4444] transition-colors'
 
   return (
     <div className="min-h-screen bg-[#0f1117] flex items-center justify-center px-4">
@@ -60,17 +82,20 @@ export default function RegisterPage() {
         <div className="bg-[#13151f] border border-[#1e2133] rounded-xl p-8 space-y-5">
           <h1 className="text-xl font-semibold text-[#2E75B6]">Create account</h1>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-4" noValidate>
             <div>
               <label className="block text-[#8891a8] text-xs mb-1">Email</label>
               <input
                 type="email"
                 value={email}
-                onChange={(e: ChangeEvent<HTMLInputElement>) => setEmail(e.target.value)}
+                onChange={handleEmailChange}
                 placeholder="you@example.com"
                 required
-                className={inputCls}
+                className={emailErr ? inputErrCls : inputCls}
               />
+              {emailErr && (
+                <p className="text-[#ef4444] text-xs mt-1">{emailErr}</p>
+              )}
             </div>
 
             <div>
@@ -106,9 +131,9 @@ export default function RegisterPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-[#2E75B6] hover:bg-[#1a5ea8] disabled:opacity-60 disabled:cursor-not-allowed text-white py-2.5 rounded-lg text-sm font-medium transition-colors"
+              className="w-full bg-[#2E75B6] hover:bg-[#1a5ea8] disabled:opacity-60 disabled:cursor-not-allowed text-white py-2.5 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2"
             >
-              {loading ? 'Creating account…' : 'Create account'}
+              {loading ? <><Spinner size={16} /> Creating account…</> : 'Create account'}
             </button>
           </form>
 

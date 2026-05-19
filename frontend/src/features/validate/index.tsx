@@ -1,13 +1,15 @@
 import { useEffect, useState } from 'react'
 import type { ChangeEvent } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 
 import { validateRunsheet } from '../../api/validate'
 import type { ValidateResponse } from '../../api/validate'
 import { getHistory, getRunsheet } from '../../api/runsheet'
 import { useAuthStore } from '../../store/authStore'
 import { useRunsheetStore } from '../../store/runsheetStore'
-import type { RunSheetSummary } from '../../types/runsheet'
+import { NavBar } from '../../components/layout/NavBar'
+import { Spinner } from '../../components/ui/Spinner'
+import type { ProgrammeInput, RunSheetSummary, Segment } from '../../types/runsheet'
 
 /* ── Helpers ────────────────────────────────────────────────────────────── */
 
@@ -56,7 +58,7 @@ export default function ValidatePage() {
     setError(null)
     setIsLoading(true)
     try {
-      let request: { segments: typeof storeSegments; programme_input: typeof currentRunsheet.programme_input }
+      let request: { segments: Segment[]; programme_input: ProgrammeInput }
 
       if (source === 'current') {
         if (!currentRunsheet) {
@@ -85,7 +87,6 @@ export default function ValidatePage() {
     }
   }
 
-  /* ── Compliance badge colour ─────────────────────────────────────────── */
   function badgeColour(risk: string): string {
     if (risk === 'compliant') return '#22c55e'
     if (risk === 'moderate')  return '#f59e0b'
@@ -95,34 +96,18 @@ export default function ValidatePage() {
   const inputCls =
     'bg-[#0f1117] border border-[#1e2133] rounded-lg px-3 py-2 text-[#e8eaf0] text-sm focus:outline-none focus:border-[#2E75B6] transition-colors'
 
-  /* ── Render ──────────────────────────────────────────────────────────── */
+  const navItems = [
+    { label: 'Dashboard',     to: '/dashboard' },
+    { label: 'New Run-sheet', to: '/' },
+    { label: 'Timeline',      to: '/timeline' },
+    { label: 'Sign out', onClick: () => { logout(); navigate('/login') }, danger: true as const },
+  ]
+
   return (
     <div className="min-h-screen bg-[#0f1117] text-[#e8eaf0]">
+      <NavBar items={navItems} />
 
-      {/* Nav */}
-      <header className="border-b border-[#1e2133] bg-[#13151f] px-6 py-3 flex items-center justify-between shrink-0">
-        <div className="flex items-center gap-2">
-          <div className="w-7 h-7 rounded-lg bg-[#1a2a4a] flex items-center justify-center">
-            <span className="text-[#2E75B6] font-bold text-xs">R</span>
-          </div>
-          <span className="text-[#e8eaf0] font-medium text-sm">
-            Radio<span className="text-[#2E75B6]">Sheet</span> AI
-          </span>
-        </div>
-        <div className="flex items-center gap-4">
-          <Link to="/dashboard" className="text-[#8891a8] hover:text-[#e8eaf0] text-sm transition-colors">Dashboard</Link>
-          <Link to="/"          className="text-[#8891a8] hover:text-[#e8eaf0] text-sm transition-colors">New Run-sheet</Link>
-          <Link to="/timeline"  className="text-[#8891a8] hover:text-[#e8eaf0] text-sm transition-colors">Timeline</Link>
-          <button
-            onClick={() => { logout(); navigate('/login') }}
-            className="text-[#8891a8] hover:text-[#ef4444] text-sm transition-colors"
-          >
-            Sign out
-          </button>
-        </div>
-      </header>
-
-      <main className="max-w-3xl mx-auto px-6 py-8 space-y-8">
+      <main className="max-w-3xl mx-auto px-4 md:px-6 py-8 space-y-8">
 
         {/* Title */}
         <div>
@@ -137,7 +122,7 @@ export default function ValidatePage() {
           <p className="text-[#e8eaf0] text-sm font-medium">Select source</p>
 
           {/* Radio buttons */}
-          <div className="flex gap-6">
+          <div className="flex gap-6 flex-wrap">
             {(['history', 'current'] as const).map(opt => (
               <label key={opt} className="flex items-center gap-2 cursor-pointer">
                 <input
@@ -159,9 +144,11 @@ export default function ValidatePage() {
           {source === 'history' && (
             <div>
               {isFetching ? (
-                <p className="text-[#8891a8] text-sm">Loading history…</p>
+                <div className="flex items-center gap-2 text-[#8891a8] text-sm">
+                  <Spinner size={14} /> Loading history…
+                </div>
               ) : history.length === 0 ? (
-                <p className="text-[#8891a8] text-sm">No saved run-sheets found.</p>
+                <p className="text-[#8891a8] text-sm">No saved run-sheets</p>
               ) : (
                 <select
                   value={selectedId}
@@ -197,9 +184,9 @@ export default function ValidatePage() {
             type="button"
             onClick={handleValidate}
             disabled={isLoading || (source === 'current' && !currentRunsheet) || (source === 'history' && history.length === 0)}
-            className="bg-[#2E75B6] hover:bg-[#1a5ea8] disabled:opacity-50 disabled:cursor-not-allowed text-white px-5 py-2 rounded-lg text-sm font-medium transition-colors"
+            className="bg-[#2E75B6] hover:bg-[#1a5ea8] disabled:opacity-50 disabled:cursor-not-allowed text-white px-5 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
           >
-            {isLoading ? 'Validating…' : 'Validate'}
+            {isLoading ? <><Spinner size={14} /> Validating…</> : 'Validate'}
           </button>
         </div>
 
@@ -222,7 +209,6 @@ export default function ValidatePage() {
                   {result.compliance_risk}
                 </span>
               </p>
-              {/* Compliance badge */}
               <span
                 className="text-xs font-semibold px-2.5 py-1 rounded-full shrink-0"
                 style={{

@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 
 import { getAuditLog, getMe } from '../../api/user'
 import type { AuditLogEntry, UserInfo } from '../../api/user'
 import { useAuthStore } from '../../store/authStore'
+import { NavBar } from '../../components/layout/NavBar'
 
 /* ── Helpers ────────────────────────────────────────────────────────────── */
 
@@ -57,33 +58,18 @@ export default function SettingsPage() {
       .finally(() => setIsLoading(false))
   }, [])
 
+  const navItems = [
+    { label: 'Dashboard',     to: '/dashboard' },
+    { label: 'New Run-sheet', to: '/' },
+    { label: 'Validate',      to: '/validate' },
+    { label: 'Sign out', onClick: () => { logout(); navigate('/login') }, danger: true as const },
+  ]
+
   return (
     <div className="min-h-screen bg-[#0f1117] text-[#e8eaf0]">
+      <NavBar items={navItems} />
 
-      {/* Nav */}
-      <header className="border-b border-[#1e2133] bg-[#13151f] px-6 py-3 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <div className="w-7 h-7 rounded-lg bg-[#1a2a4a] flex items-center justify-center">
-            <span className="text-[#2E75B6] font-bold text-xs">R</span>
-          </div>
-          <span className="text-[#e8eaf0] font-medium text-sm">
-            Radio<span className="text-[#2E75B6]">Sheet</span> AI
-          </span>
-        </div>
-        <div className="flex items-center gap-4">
-          <Link to="/dashboard" className="text-[#8891a8] hover:text-[#e8eaf0] text-sm transition-colors">Dashboard</Link>
-          <Link to="/"          className="text-[#8891a8] hover:text-[#e8eaf0] text-sm transition-colors">New Run-sheet</Link>
-          <Link to="/validate"  className="text-[#8891a8] hover:text-[#e8eaf0] text-sm transition-colors">Validate</Link>
-          <button
-            onClick={() => { logout(); navigate('/login') }}
-            className="text-[#8891a8] hover:text-[#ef4444] text-sm transition-colors"
-          >
-            Sign out
-          </button>
-        </div>
-      </header>
-
-      <main className="max-w-4xl mx-auto px-6 py-8 space-y-8">
+      <main className="max-w-4xl mx-auto px-4 md:px-6 py-8 space-y-8">
 
         <div>
           <h1 className="text-2xl font-semibold text-[#2E75B6]">Settings</h1>
@@ -141,44 +127,46 @@ export default function SettingsPage() {
               </div>
             ) : auditLog.length === 0 ? (
               <p className="text-[#8891a8] text-sm text-center py-10">
-                No activity recorded yet. Actions like generating run-sheets and applying fixes will appear here.
+                No activity yet
               </p>
             ) : (
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-[#1e2133]">
-                    <th className="text-left px-4 py-3 text-[#8891a8] text-xs uppercase tracking-wide font-medium w-44">
-                      Timestamp
-                    </th>
-                    <th className="text-left px-4 py-3 text-[#8891a8] text-xs uppercase tracking-wide font-medium w-48">
-                      Action
-                    </th>
-                    <th className="text-left px-4 py-3 text-[#8891a8] text-xs uppercase tracking-wide font-medium">
-                      Detail
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {auditLog.map((entry, idx) => (
-                    <tr
-                      key={idx}
-                      className={`border-b border-[#1e2133] last:border-0 ${idx % 2 === 1 ? 'bg-[#0f1117]' : ''}`}
-                    >
-                      <td className="px-4 py-3 text-[#8891a8] text-xs font-mono whitespace-nowrap">
-                        {fmtDateTime(entry.created_at)}
-                      </td>
-                      <td className="px-4 py-3">
-                        <span className="text-[#e8eaf0] font-medium">
-                          {labelFor(entry.action)}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-[#8891a8] text-xs font-mono">
-                        {entry.detail || '—'}
-                      </td>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm min-w-[480px]">
+                  <thead>
+                    <tr className="border-b border-[#1e2133]">
+                      <th className="text-left px-4 py-3 text-[#8891a8] text-xs uppercase tracking-wide font-medium w-44">
+                        Timestamp
+                      </th>
+                      <th className="text-left px-4 py-3 text-[#8891a8] text-xs uppercase tracking-wide font-medium w-48">
+                        Action
+                      </th>
+                      <th className="text-left px-4 py-3 text-[#8891a8] text-xs uppercase tracking-wide font-medium">
+                        Detail
+                      </th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {auditLog.map((entry, idx) => (
+                      <tr
+                        key={idx}
+                        className={`border-b border-[#1e2133] last:border-0 ${idx % 2 === 1 ? 'bg-[#0f1117]' : ''}`}
+                      >
+                        <td className="px-4 py-3 text-[#8891a8] text-xs font-mono whitespace-nowrap">
+                          {fmtDateTime(entry.created_at)}
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className="text-[#e8eaf0] font-medium">
+                            {labelFor(entry.action)}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-[#8891a8] text-xs font-mono">
+                          {entry.detail || '—'}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             )}
           </div>
         </section>

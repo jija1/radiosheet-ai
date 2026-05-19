@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
 import type { KeyboardEvent } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 
 import { getProfile, updateProfile } from '../../api/user'
 import type { ProfileData } from '../../api/user'
 import { useAuthStore } from '../../store/authStore'
+import { useToastStore } from '../../store/toastStore'
+import { NavBar } from '../../components/layout/NavBar'
 
 /* ── Helpers ────────────────────────────────────────────────────────────── */
 
@@ -41,12 +43,12 @@ export default function ProfilePage() {
   const logout         = useAuthStore(s => s.logout)
   const setDisplayName = useAuthStore(s => s.setDisplayName)
   const navigate       = useNavigate()
+  const toast          = useToastStore()
 
   const [profile, setProfile]     = useState<ProfileData | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError]         = useState<string | null>(null)
 
-  // Inline edit state
   const [isEditing, setIsEditing]   = useState(false)
   const [editValue, setEditValue]   = useState('')
   const [isSaving, setIsSaving]     = useState(false)
@@ -72,12 +74,14 @@ export default function ProfilePage() {
     setIsSaving(true)
     setSaveError(null)
     try {
-      const updated = await updateProfile(editValue)
+      const updated = await updateProfile(editValue.trim())
       setProfile(updated)
       setDisplayName(updated.display_name)
       setIsEditing(false)
+      toast.success('Profile updated')
     } catch {
       setSaveError('Could not save. Try again.')
+      toast.error('Could not save profile')
     } finally {
       setIsSaving(false)
     }
@@ -90,33 +94,18 @@ export default function ProfilePage() {
 
   const initials = getInitials(profile?.display_name ?? user?.display_name, user?.email ?? '?')
 
+  const navItems = [
+    { label: 'Dashboard',     to: '/dashboard' },
+    { label: 'New Run-sheet', to: '/' },
+    { label: 'Settings',      to: '/settings' },
+    { label: 'Sign out', onClick: () => { logout(); navigate('/login') }, danger: true as const },
+  ]
+
   return (
     <div className="min-h-screen bg-[#0f1117] text-[#e8eaf0]">
+      <NavBar items={navItems} />
 
-      {/* Nav */}
-      <header className="border-b border-[#1e2133] bg-[#13151f] px-6 py-3 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <div className="w-7 h-7 rounded-lg bg-[#1a2a4a] flex items-center justify-center">
-            <span className="text-[#2E75B6] font-bold text-xs">R</span>
-          </div>
-          <span className="text-[#e8eaf0] font-medium text-sm">
-            Radio<span className="text-[#2E75B6]">Sheet</span> AI
-          </span>
-        </div>
-        <div className="flex items-center gap-4">
-          <Link to="/dashboard" className="text-[#8891a8] hover:text-[#e8eaf0] text-sm transition-colors">Dashboard</Link>
-          <Link to="/"          className="text-[#8891a8] hover:text-[#e8eaf0] text-sm transition-colors">New Run-sheet</Link>
-          <Link to="/settings"  className="text-[#8891a8] hover:text-[#e8eaf0] text-sm transition-colors">Settings</Link>
-          <button
-            onClick={() => { logout(); navigate('/login') }}
-            className="text-[#8891a8] hover:text-[#ef4444] text-sm transition-colors"
-          >
-            Sign out
-          </button>
-        </div>
-      </header>
-
-      <main className="max-w-3xl mx-auto px-6 py-8 space-y-6">
+      <main className="max-w-3xl mx-auto px-4 md:px-6 py-8 space-y-6">
 
         <div>
           <h1 className="text-2xl font-semibold text-[#2E75B6]">Profile</h1>
@@ -129,7 +118,7 @@ export default function ProfilePage() {
 
         {/* ── Identity card ─────────────────────────────────────────────── */}
         <div className="bg-[#13151f] border border-[#1e2133] rounded-xl p-6">
-          <div className="flex items-start gap-5">
+          <div className="flex items-start gap-5 flex-wrap sm:flex-nowrap">
 
             {/* Avatar */}
             <div
@@ -146,7 +135,7 @@ export default function ProfilePage() {
               <div>
                 <label className="block text-[#8891a8] text-xs mb-1">Display Name</label>
                 {isEditing ? (
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <input
                       ref={inputRef}
                       type="text"
@@ -188,7 +177,7 @@ export default function ProfilePage() {
               </div>
 
               {/* Member since */}
-              <div className="flex gap-8">
+              <div className="flex gap-8 flex-wrap">
                 <div>
                   <label className="block text-[#8891a8] text-xs mb-1">Member since</label>
                   <span className="text-[#e8eaf0] text-sm">
@@ -210,7 +199,7 @@ export default function ProfilePage() {
         <div>
           <h2 className="text-[#e8eaf0] font-medium mb-3">Statistics</h2>
           {isLoading ? (
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               {[0, 1, 2].map(i => (
                 <div key={i} className="bg-[#13151f] border border-[#1e2133] rounded-xl p-5 h-24 animate-pulse" />
               ))}
