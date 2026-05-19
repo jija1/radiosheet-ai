@@ -87,6 +87,12 @@ export default function DashboardPage() {
             Validate
           </button>
           <button
+            onClick={() => navigate('/settings')}
+            className="text-[#8891a8] hover:text-[#e8eaf0] text-sm transition-colors"
+          >
+            Settings
+          </button>
+          <button
             onClick={() => { logout(); navigate('/login') }}
             className="text-[#8891a8] hover:text-[#e8eaf0] text-sm transition-colors"
           >

@@ -13,6 +13,7 @@ from app.api.v1.runsheet.schemas import (
     Segment,
 )
 from app.core.exceptions import NotFoundException
+from app.models.audit_log import log_action
 
 
 async def detect(
@@ -50,6 +51,8 @@ async def apply_fix(
     record.segments_json  = json.dumps([s.model_dump(mode="json") for s in updated_segments])
     record.conflicts_json = json.dumps([c.model_dump(mode="json") for c in remaining_conflicts])
     db.commit()
+    log_action(db, record.user_id, "fix_applied",
+               f"rule={conflict_id}, runsheet={runsheet_id}")
 
     return FixResponse(
         updated_segments=updated_segments,

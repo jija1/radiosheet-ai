@@ -6,6 +6,7 @@ import RegisterPage from './features/auth/RegisterPage'
 import DashboardPage from './features/dashboard'
 import ExportPage from './features/export'
 import InputFormPage from './features/input-form'
+import SettingsPage from './features/settings'
 import TimelinePage from './features/timeline'
 import ValidatePage from './features/validate'
 
@@ -39,6 +40,9 @@ function App() {
       } />
       <Route path="/validate" element={
         <ProtectedRoute><ValidatePage /></ProtectedRoute>
+      } />
+      <Route path="/settings" element={
+        <ProtectedRoute><SettingsPage /></ProtectedRoute>
       } />
       <Route path="/export" element={
         <ProtectedRoute><ExportPage /></ProtectedRoute>

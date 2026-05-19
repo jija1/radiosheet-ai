@@ -218,9 +218,10 @@ export default function TimelinePage() {
               </span>
             )
           })()}
-          <Link to="/"         className="text-[#8891a8] text-sm hover:text-[#e8eaf0] transition-colors">← Back to form</Link>
-          <Link to="/validate" className="text-[#8891a8] text-sm hover:text-[#e8eaf0] transition-colors">Validate</Link>
-          <Link to="/export"   className="text-[#8891a8] text-sm hover:text-[#e8eaf0] transition-colors">Export ↗</Link>
+          <Link to="/"          className="text-[#8891a8] text-sm hover:text-[#e8eaf0] transition-colors">← Back to form</Link>
+          <Link to="/validate"  className="text-[#8891a8] text-sm hover:text-[#e8eaf0] transition-colors">Validate</Link>
+          <Link to="/export"    className="text-[#8891a8] text-sm hover:text-[#e8eaf0] transition-colors">Export ↗</Link>
+          <Link to="/settings"  className="text-[#8891a8] text-sm hover:text-[#e8eaf0] transition-colors">Settings</Link>
           <button
             onClick={() => { logout(); navigate('/login', { replace: true }) }}
             className="text-[#8891a8] text-sm hover:text-[#ef4444] transition-colors"

@@ -18,3 +18,14 @@ class DashboardResponse(BaseModel):
     recent_runsheets: list[RunSheetRecordSummary]
     average_score: float
     total_conflicts_resolved: int
+
+
+class AuditLogEntry(BaseModel):
+    action: str
+    detail: str
+    created_at: str
+
+
+class UserInfo(BaseModel):
+    email: str
+    created_at: str

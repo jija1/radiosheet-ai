@@ -9,9 +9,20 @@ from sqlalchemy.orm import Session
 from app.api.v1.runsheet.models import RunSheetRecord
 from app.api.v1.runsheet.schemas import RunSheetStats, Segment
 from app.core.exceptions import NotFoundException
-from app.dependencies import get_db
+from app.dependencies import get_current_user, get_db
+from app.models.audit_log import log_action
+from app.models.user import User
 
 router = APIRouter()
+
+
+@router.get("/log")
+async def log_export_view(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> dict[str, str]:
+    log_action(db, str(current_user.id), "export_viewed", "")
+    return {"status": "logged"}
 
 
 class PreviewRequest(BaseModel):

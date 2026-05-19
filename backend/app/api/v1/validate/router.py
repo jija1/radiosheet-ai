@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends
+from sqlalchemy.orm import Session
 
 from app.ai import compliance_validator, conflict_detector, scorer
 from app.api.v1.runsheet.schemas import (
@@ -11,7 +12,8 @@ from app.api.v1.runsheet.schemas import (
     SegmentType,
 )
 from app.api.v1.validate.schemas import ValidateRequest, ValidateResponse
-from app.dependencies import get_current_user
+from app.dependencies import get_current_user, get_db
+from app.models.audit_log import log_action
 from app.models.user import User
 
 router = APIRouter()
@@ -21,6 +23,7 @@ router = APIRouter()
 async def validate_runsheet(
     payload: ValidateRequest,
     current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
 ) -> ValidateResponse:
     segments = payload.segments
     programme_input = payload.programme_input
@@ -30,6 +33,9 @@ async def validate_runsheet(
     recommendations: list[Recommendation]
     recommendations, score = scorer.generate_recommendations(segments, programme_input)
     stats = _compute_stats(segments, conflicts, score)
+
+    log_action(db, str(current_user.id), "compliance_validated",
+               f"station={programme_input.station_name}")
 
     return ValidateResponse(
         segments=segments,

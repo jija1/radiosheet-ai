@@ -17,5 +17,22 @@ export interface DashboardData {
   total_conflicts_resolved: number
 }
 
+export interface UserInfo {
+  email: string
+  created_at: string
+}
+
+export interface AuditLogEntry {
+  action: string
+  detail: string
+  created_at: string
+}
+
 export const getDashboard = (): Promise<DashboardData> =>
   client.get<DashboardData>('/api/v1/user/dashboard').then((r) => r.data)
+
+export const getMe = (): Promise<UserInfo> =>
+  client.get<UserInfo>('/api/v1/user/me').then((r) => r.data)
+
+export const getAuditLog = (): Promise<AuditLogEntry[]> =>
+  client.get<AuditLogEntry[]>('/api/v1/user/audit-log').then((r) => r.data)

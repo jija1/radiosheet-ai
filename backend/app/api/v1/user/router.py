@@ -6,11 +6,40 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from app.api.v1.runsheet.models import RunSheetRecord
-from app.api.v1.user.schemas import DashboardResponse, RunSheetRecordSummary
+from app.api.v1.user.schemas import AuditLogEntry, DashboardResponse, RunSheetRecordSummary, UserInfo
 from app.dependencies import get_current_user, get_db
+from app.models.audit_log import AuditLog
 from app.models.user import User
 
 router = APIRouter()
+
+
+@router.get("/me", response_model=UserInfo)
+async def get_me(
+    current_user: User = Depends(get_current_user),
+) -> UserInfo:
+    return UserInfo(
+        email=current_user.email,
+        created_at=current_user.created_at or "",
+    )
+
+
+@router.get("/audit-log", response_model=list[AuditLogEntry])
+async def get_audit_log(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> list[AuditLogEntry]:
+    records = (
+        db.query(AuditLog)
+        .filter(AuditLog.user_id == str(current_user.id))
+        .order_by(AuditLog.created_at.desc())
+        .limit(50)
+        .all()
+    )
+    return [
+        AuditLogEntry(action=r.action, detail=r.detail, created_at=r.created_at)
+        for r in records
+    ]
 
 
 @router.get("/dashboard", response_model=DashboardResponse)

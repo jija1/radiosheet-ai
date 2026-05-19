@@ -22,6 +22,7 @@ from app.api.v1.runsheet.schemas import (
     UpdateSegmentsResponse,
 )
 from app.core.exceptions import NotFoundException
+from app.models.audit_log import log_action
 
 
 class RunSheetSummary(BaseModel):
@@ -68,6 +69,8 @@ async def generate_runsheet(
     )
     db.add(record)
     db.commit()
+    log_action(db, user_id, "runsheet_generated",
+               f"station={payload.station_name}, id={runsheet_id}")
 
     return RunSheetResponse(
         runsheet_id=runsheet_id,
@@ -179,6 +182,7 @@ async def update_segments(
     record.conflicts_json = json.dumps([c.model_dump(mode="json") for c in conflicts])
     record.stats_json = json.dumps(stats.model_dump(mode="json"))
     db.commit()
+    log_action(db, user_id, "segments_updated", f"runsheet_id={payload.runsheet_id}")
 
     return UpdateSegmentsResponse(
         segments=segments,
