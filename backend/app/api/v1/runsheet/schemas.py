@@ -82,6 +82,19 @@ class Recommendation(BaseModel):
     impact_score: float
 
 
+class ComplianceViolation(BaseModel):
+    rule_id: str
+    severity: str
+    message: str
+    penalty: int
+
+
+class ComplianceResult(BaseModel):
+    compliance_score: int
+    compliance_risk: str
+    compliance_violations: list[ComplianceViolation]
+
+
 class RunSheetStats(BaseModel):
     total_segments: int
     total_duration_minutes: int
@@ -98,6 +111,9 @@ class RunSheetResponse(BaseModel):
     segments: list[Segment]
     conflicts: list[Conflict]
     recommendations: list[Recommendation]
+    compliance_score: int
+    compliance_risk: str
+    compliance_violations: list[ComplianceViolation]
     stats: RunSheetStats
     generated_at: str
 
@@ -110,6 +126,9 @@ class FixRequest(BaseModel):
 class FixResponse(BaseModel):
     updated_segments: list[Segment]
     remaining_conflicts: list[Conflict]
+    compliance_score: int
+    compliance_risk: str
+    compliance_violations: list[ComplianceViolation]
 
 
 class UpdateSegmentsRequest(BaseModel):
@@ -121,3 +140,6 @@ class UpdateSegmentsResponse(BaseModel):
     segments: list[Segment]
     conflicts: list[Conflict]
     stats: RunSheetStats
+    compliance_score: int
+    compliance_risk: str
+    compliance_violations: list[ComplianceViolation]

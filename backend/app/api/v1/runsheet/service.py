@@ -7,9 +7,10 @@ from datetime import datetime, timezone
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
-from app.ai import conflict_detector, notes_generator, scheduling_engine, scorer
+from app.ai import compliance_validator, conflict_detector, notes_generator, scheduling_engine, scorer
 from app.api.v1.runsheet.models import RunSheetRecord
 from app.api.v1.runsheet.schemas import (
+    ComplianceViolation,
     Conflict,
     ProgrammeInput,
     Recommendation,
@@ -46,6 +47,7 @@ async def generate_runsheet(
     recommendations: list[Recommendation]
     recommendations, score = scorer.generate_recommendations(segments, payload)
     stats = _compute_stats(segments, conflicts, score)
+    comp = compliance_validator.validate_compliance(segments, payload)
 
     runsheet_id  = str(uuid.uuid4())
     generated_at = datetime.now(timezone.utc).isoformat()
@@ -73,6 +75,9 @@ async def generate_runsheet(
         segments=segments,
         conflicts=conflicts,
         recommendations=recommendations,
+        compliance_score=comp.compliance_score,
+        compliance_risk=comp.compliance_risk,
+        compliance_violations=comp.compliance_violations,
         stats=stats,
         generated_at=generated_at,
     )
@@ -130,6 +135,7 @@ def _record_to_response(record: RunSheetRecord) -> RunSheetResponse:
     recommendations = [Recommendation(**r) for r in json.loads(record.recommendations_json)]
     stats = RunSheetStats(**json.loads(record.stats_json))
     programme_input = ProgrammeInput(**json.loads(record.programme_input_json))
+    comp = compliance_validator.validate_compliance(segments, programme_input)
 
     return RunSheetResponse(
         runsheet_id=record.id,
@@ -137,6 +143,9 @@ def _record_to_response(record: RunSheetRecord) -> RunSheetResponse:
         segments=segments,
         conflicts=conflicts,
         recommendations=recommendations,
+        compliance_score=comp.compliance_score,
+        compliance_risk=comp.compliance_risk,
+        compliance_violations=comp.compliance_violations,
         stats=stats,
         generated_at=record.generated_at,
     )
@@ -164,13 +173,21 @@ async def update_segments(
     conflicts: list[Conflict] = conflict_detector.detect_conflicts(segments, programme_input)
     _, score = scorer.generate_recommendations(segments, programme_input)
     stats = _compute_stats(segments, conflicts, score)
+    comp = compliance_validator.validate_compliance(segments, programme_input)
 
     record.segments_json = json.dumps([s.model_dump(mode="json") for s in segments])
     record.conflicts_json = json.dumps([c.model_dump(mode="json") for c in conflicts])
     record.stats_json = json.dumps(stats.model_dump(mode="json"))
     db.commit()
 
-    return UpdateSegmentsResponse(segments=segments, conflicts=conflicts, stats=stats)
+    return UpdateSegmentsResponse(
+        segments=segments,
+        conflicts=conflicts,
+        stats=stats,
+        compliance_score=comp.compliance_score,
+        compliance_risk=comp.compliance_risk,
+        compliance_violations=comp.compliance_violations,
+    )
 
 
 # ---------------------------------------------------------------------------
