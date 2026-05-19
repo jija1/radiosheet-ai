@@ -10,6 +10,7 @@ export function useApplyFix(runsheetId: string) {
 
   const updateSegments  = useRunsheetStore(s => s.updateSegments)
   const updateConflicts = useRunsheetStore(s => s.updateConflicts)
+  const setCompliance   = useRunsheetStore(s => s.setCompliance)
   const setApplyingFix  = useUiStore(s => s.setApplyingFix)
 
   async function applyFix(conflict: Conflict) {
@@ -22,6 +23,11 @@ export function useApplyFix(runsheetId: string) {
       })
       updateSegments(response.updated_segments)
       updateConflicts(response.remaining_conflicts)
+      setCompliance(
+        response.compliance_score,
+        response.compliance_risk,
+        response.compliance_violations,
+      )
     } catch (err) {
       console.error('Apply fix failed:', err)
     } finally {

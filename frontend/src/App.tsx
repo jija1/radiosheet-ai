@@ -3,21 +3,16 @@ import { Route, Routes } from 'react-router-dom'
 import { ProtectedRoute } from './components/ProtectedRoute'
 import LoginPage from './features/auth/LoginPage'
 import RegisterPage from './features/auth/RegisterPage'
+import DashboardPage from './features/dashboard'
+import ExportPage from './features/export'
 import InputFormPage from './features/input-form'
 import TimelinePage from './features/timeline'
+import ValidatePage from './features/validate'
 
 function HistoryPage() {
   return (
     <div className="min-h-screen bg-[#0f1117] text-[#e8eaf0] flex items-center justify-center">
       <div className="text-[#8891a8] text-lg">History</div>
-    </div>
-  )
-}
-
-function ExportPage() {
-  return (
-    <div className="min-h-screen bg-[#0f1117] text-[#e8eaf0] flex items-center justify-center">
-      <div className="text-[#8891a8] text-lg">Export</div>
     </div>
   )
 }
@@ -30,6 +25,9 @@ function App() {
       <Route path="/register" element={<RegisterPage />} />
 
       {/* Protected routes */}
+      <Route path="/dashboard" element={
+        <ProtectedRoute><DashboardPage /></ProtectedRoute>
+      } />
       <Route path="/" element={
         <ProtectedRoute><InputFormPage /></ProtectedRoute>
       } />
@@ -38,6 +36,9 @@ function App() {
       } />
       <Route path="/history" element={
         <ProtectedRoute><HistoryPage /></ProtectedRoute>
+      } />
+      <Route path="/validate" element={
+        <ProtectedRoute><ValidatePage /></ProtectedRoute>
       } />
       <Route path="/export" element={
         <ProtectedRoute><ExportPage /></ProtectedRoute>

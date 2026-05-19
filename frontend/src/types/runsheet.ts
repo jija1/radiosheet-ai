@@ -11,6 +11,14 @@ export type SegmentType =
   | 'weather'
   | 'close'
   | 'intro'
+  | 'sig_tune'
+  | 'interview'
+  | 'vox_pop'
+  | 'phone_in_segment'
+  | 'drama'
+  | 'storytelling'
+  | 'sponsor'
+  | 'scripted_report'
 
 export interface FixedSegment {
   name: string
@@ -56,6 +64,13 @@ export interface Recommendation {
   impact_score: number
 }
 
+export interface ComplianceViolation {
+  rule_id: string
+  severity: string
+  message: string
+  penalty: number
+}
+
 export interface RunSheetStats {
   total_segments: number
   total_duration_minutes: number
@@ -72,6 +87,9 @@ export interface RunSheetResponse {
   segments: Segment[]
   conflicts: Conflict[]
   recommendations: Recommendation[]
+  compliance_score: number
+  compliance_risk: string
+  compliance_violations: ComplianceViolation[]
   stats: RunSheetStats
   generated_at: string
 }
@@ -84,6 +102,9 @@ export interface FixRequest {
 export interface FixResponse {
   updated_segments: Segment[]
   remaining_conflicts: Conflict[]
+  compliance_score: number
+  compliance_risk: string
+  compliance_violations: ComplianceViolation[]
 }
 
 export interface RunSheetSummary {

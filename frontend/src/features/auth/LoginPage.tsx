@@ -21,7 +21,7 @@ export default function LoginPage() {
     try {
       const { access_token } = await apiLogin(email.trim(), password)
       login(access_token)
-      navigate('/', { replace: true })
+      navigate('/dashboard', { replace: true })
     } catch (err: unknown) {
       const msg =
         err instanceof Error ? err.message : 'Login failed — check your credentials.'

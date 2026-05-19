@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import type {
+  ComplianceViolation,
   Conflict,
   Recommendation,
   RunSheetResponse,
@@ -13,11 +14,16 @@ interface RunsheetState {
   conflicts: Conflict[]
   recommendations: Recommendation[]
   stats: RunSheetStats | null
+  complianceScore: number
+  complianceRisk: string
+  complianceViolations: ComplianceViolation[]
   isLoading: boolean
   error: string | null
   setRunsheet: (runsheet: RunSheetResponse) => void
   updateSegments: (segments: Segment[]) => void
   updateConflicts: (conflicts: Conflict[]) => void
+  updateStats: (stats: RunSheetStats) => void
+  setCompliance: (score: number, risk: string, violations: ComplianceViolation[]) => void
   setLoading: (loading: boolean) => void
   setError: (error: string | null) => void
   clearRunsheet: () => void
@@ -29,6 +35,9 @@ export const useRunsheetStore = create<RunsheetState>()((set) => ({
   conflicts: [],
   recommendations: [],
   stats: null,
+  complianceScore: 100,
+  complianceRisk: 'compliant',
+  complianceViolations: [],
   isLoading: false,
   error: null,
 
@@ -39,11 +48,19 @@ export const useRunsheetStore = create<RunsheetState>()((set) => ({
       conflicts: runsheet.conflicts,
       recommendations: runsheet.recommendations,
       stats: runsheet.stats,
+      complianceScore: runsheet.compliance_score,
+      complianceRisk: runsheet.compliance_risk,
+      complianceViolations: runsheet.compliance_violations,
     }),
 
   updateSegments: (segments) => set({ segments }),
 
   updateConflicts: (conflicts) => set({ conflicts }),
+
+  updateStats: (stats) => set({ stats }),
+
+  setCompliance: (complianceScore, complianceRisk, complianceViolations) =>
+    set({ complianceScore, complianceRisk, complianceViolations }),
 
   setLoading: (isLoading) => set({ isLoading }),
 
@@ -56,6 +73,9 @@ export const useRunsheetStore = create<RunsheetState>()((set) => ({
       conflicts: [],
       recommendations: [],
       stats: null,
+      complianceScore: 100,
+      complianceRisk: 'compliant',
+      complianceViolations: [],
       isLoading: false,
       error: null,
     }),
