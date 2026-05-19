@@ -110,3 +110,14 @@ class FixRequest(BaseModel):
 class FixResponse(BaseModel):
     updated_segments: list[Segment]
     remaining_conflicts: list[Conflict]
+
+
+class UpdateSegmentsRequest(BaseModel):
+    runsheet_id: str
+    segments: list[Segment]
+
+
+class UpdateSegmentsResponse(BaseModel):
+    segments: list[Segment]
+    conflicts: list[Conflict]
+    stats: RunSheetStats

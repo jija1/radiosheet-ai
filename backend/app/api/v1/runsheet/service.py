@@ -17,6 +17,8 @@ from app.api.v1.runsheet.schemas import (
     RunSheetStats,
     Segment,
     SegmentType,
+    UpdateSegmentsRequest,
+    UpdateSegmentsResponse,
 )
 from app.core.exceptions import NotFoundException
 
@@ -138,6 +140,64 @@ def _record_to_response(record: RunSheetRecord) -> RunSheetResponse:
         stats=stats,
         generated_at=record.generated_at,
     )
+
+
+# ---------------------------------------------------------------------------
+# update_segments
+# ---------------------------------------------------------------------------
+
+async def update_segments(
+    payload: UpdateSegmentsRequest,
+    db: Session,
+    user_id: str | None = None,
+) -> UpdateSegmentsResponse:
+    q = db.query(RunSheetRecord).filter(RunSheetRecord.id == payload.runsheet_id)
+    if user_id:
+        q = q.filter(RunSheetRecord.user_id == user_id)
+    record = q.first()
+    if not record:
+        raise NotFoundException(f"Run-sheet '{payload.runsheet_id}' not found")
+
+    programme_input = ProgrammeInput(**json.loads(record.programme_input_json))
+
+    segments = _recalc_times(payload.segments)
+    conflicts: list[Conflict] = conflict_detector.detect_conflicts(segments, programme_input)
+    _, score = scorer.generate_recommendations(segments, programme_input)
+    stats = _compute_stats(segments, conflicts, score)
+
+    record.segments_json = json.dumps([s.model_dump(mode="json") for s in segments])
+    record.conflicts_json = json.dumps([c.model_dump(mode="json") for c in conflicts])
+    record.stats_json = json.dumps(stats.model_dump(mode="json"))
+    db.commit()
+
+    return UpdateSegmentsResponse(segments=segments, conflicts=conflicts, stats=stats)
+
+
+# ---------------------------------------------------------------------------
+# Time helpers (mirrors conflict_detector without importing private symbols)
+# ---------------------------------------------------------------------------
+
+def _hhmm_to_minutes(t: str) -> int:
+    h, m = t.split(":")
+    return int(h) * 60 + int(m)
+
+
+def _minutes_to_hhmm(minutes: int) -> str:
+    minutes = minutes % (24 * 60)
+    return f"{minutes // 60:02d}:{minutes % 60:02d}"
+
+
+def _recalc_times(segments: list[Segment]) -> list[Segment]:
+    if not segments:
+        return []
+    result: list[Segment] = []
+    cursor = _hhmm_to_minutes(segments[0].start_time)
+    for seg in segments:
+        new_start = _minutes_to_hhmm(cursor)
+        new_end = _minutes_to_hhmm(cursor + seg.duration_minutes)
+        result.append(seg.model_copy(update={"start_time": new_start, "end_time": new_end}))
+        cursor += seg.duration_minutes
+    return result
 
 
 def _compute_stats(
