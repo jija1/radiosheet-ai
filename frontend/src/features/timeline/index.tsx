@@ -21,6 +21,7 @@ import { CSS } from '@dnd-kit/utilities'
 import { useRunsheetStore } from '../../store/runsheetStore'
 import { useAuthStore } from '../../store/authStore'
 import { useUiStore } from '../../store/uiStore'
+import { getInitials } from '../profile'
 import { SEGMENT_COLOURS } from '../../utils/colours'
 import { ConflictPanel } from './components/ConflictPanel'
 import { RecommendationsPanel } from './components/RecommendationsPanel'
@@ -82,6 +83,7 @@ export default function TimelinePage() {
   const complianceViolations = useRunsheetStore(s => s.complianceViolations)
   const fixingConflictId     = useUiStore(s => s.fixingConflictId)
   const logout               = useAuthStore(s => s.logout)
+  const authUser             = useAuthStore(s => s.user)
   const navigate             = useNavigate()
 
   const runsheetId = currentRunsheet?.runsheet_id ?? ''
@@ -222,6 +224,14 @@ export default function TimelinePage() {
           <Link to="/validate"  className="text-[#8891a8] text-sm hover:text-[#e8eaf0] transition-colors">Validate</Link>
           <Link to="/export"    className="text-[#8891a8] text-sm hover:text-[#e8eaf0] transition-colors">Export ↗</Link>
           <Link to="/settings"  className="text-[#8891a8] text-sm hover:text-[#e8eaf0] transition-colors">Settings</Link>
+          <Link to="/profile" title="Profile" className="shrink-0">
+            <div
+              className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold"
+              style={{ backgroundColor: '#2E75B6' }}
+            >
+              {getInitials(authUser?.display_name, authUser?.email ?? '?')}
+            </div>
+          </Link>
           <button
             onClick={() => { logout(); navigate('/login', { replace: true }) }}
             className="text-[#8891a8] text-sm hover:text-[#ef4444] transition-colors"

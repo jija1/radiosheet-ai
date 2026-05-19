@@ -6,6 +6,7 @@ import type { DashboardData } from '../../api/user'
 import { getRunsheet } from '../../api/runsheet'
 import { useAuthStore } from '../../store/authStore'
 import { useRunsheetStore } from '../../store/runsheetStore'
+import { getInitials } from '../profile'
 
 function formatProgrammeType(raw: string): string {
   return raw.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
@@ -93,8 +94,20 @@ export default function DashboardPage() {
             Settings
           </button>
           <button
+            onClick={() => navigate('/profile')}
+            className="shrink-0"
+            title="Profile"
+          >
+            <div
+              className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold"
+              style={{ backgroundColor: '#2E75B6' }}
+            >
+              {getInitials(user?.display_name, user?.email ?? '?')}
+            </div>
+          </button>
+          <button
             onClick={() => { logout(); navigate('/login') }}
-            className="text-[#8891a8] hover:text-[#e8eaf0] text-sm transition-colors"
+            className="text-[#8891a8] hover:text-[#ef4444] text-sm transition-colors"
           >
             Sign out
           </button>

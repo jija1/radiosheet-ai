@@ -11,3 +11,4 @@ class User(Base):
     hashed_password = Column(String, nullable=False)
     created_at      = Column(String, nullable=False)
     last_login      = Column(String, nullable=True)
+    display_name    = Column(String(100), nullable=True)

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class RunSheetRecordSummary(BaseModel):
@@ -29,3 +29,21 @@ class AuditLogEntry(BaseModel):
 class UserInfo(BaseModel):
     email: str
     created_at: str
+
+
+class ProfileStats(BaseModel):
+    total_runsheets: int
+    average_score: float
+    total_conflicts_resolved: int
+
+
+class ProfileResponse(BaseModel):
+    email: str
+    display_name: str | None
+    created_at: str
+    last_login: str | None
+    stats: ProfileStats
+
+
+class ProfileUpdateRequest(BaseModel):
+    display_name: str = Field(max_length=100)

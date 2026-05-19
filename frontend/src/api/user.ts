@@ -28,6 +28,20 @@ export interface AuditLogEntry {
   created_at: string
 }
 
+export interface ProfileStats {
+  total_runsheets: number
+  average_score: number
+  total_conflicts_resolved: number
+}
+
+export interface ProfileData {
+  email: string
+  display_name: string | null
+  created_at: string
+  last_login: string | null
+  stats: ProfileStats
+}
+
 export const getDashboard = (): Promise<DashboardData> =>
   client.get<DashboardData>('/api/v1/user/dashboard').then((r) => r.data)
 
@@ -36,3 +50,9 @@ export const getMe = (): Promise<UserInfo> =>
 
 export const getAuditLog = (): Promise<AuditLogEntry[]> =>
   client.get<AuditLogEntry[]>('/api/v1/user/audit-log').then((r) => r.data)
+
+export const getProfile = (): Promise<ProfileData> =>
+  client.get<ProfileData>('/api/v1/user/profile').then((r) => r.data)
+
+export const updateProfile = (display_name: string): Promise<ProfileData> =>
+  client.patch<ProfileData>('/api/v1/user/profile', { display_name }).then((r) => r.data)
