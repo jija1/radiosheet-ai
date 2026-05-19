@@ -36,6 +36,7 @@ class RunSheetSummary(BaseModel):
 async def generate_runsheet(
     payload: ProgrammeInput,
     db: Session,
+    user_id: str | None = None,
 ) -> RunSheetResponse:
     segments: list[Segment] = scheduling_engine.generate(payload)
     segments = notes_generator.generate_notes(segments, payload)
@@ -49,6 +50,7 @@ async def generate_runsheet(
 
     record = RunSheetRecord(
         id=runsheet_id,
+        user_id=user_id,
         programme_type=payload.programme_type.value,
         station_name=payload.station_name,
         presenter_name=payload.presenter_name,
@@ -78,13 +80,14 @@ async def generate_runsheet(
 # get_history
 # ---------------------------------------------------------------------------
 
-async def get_history(db: Session) -> list[RunSheetSummary]:
-    records = (
-        db.query(RunSheetRecord)
-        .order_by(RunSheetRecord.generated_at.desc())
-        .limit(20)
-        .all()
-    )
+async def get_history(
+    db: Session,
+    user_id: str | None = None,
+) -> list[RunSheetSummary]:
+    q = db.query(RunSheetRecord)
+    if user_id:
+        q = q.filter(RunSheetRecord.user_id == user_id)
+    records = q.order_by(RunSheetRecord.generated_at.desc()).limit(20).all()
     return [
         RunSheetSummary(
             id=r.id,
@@ -101,8 +104,15 @@ async def get_history(db: Session) -> list[RunSheetSummary]:
 # get_by_id
 # ---------------------------------------------------------------------------
 
-async def get_by_id(runsheet_id: str, db: Session) -> RunSheetResponse:
-    record = db.query(RunSheetRecord).filter(RunSheetRecord.id == runsheet_id).first()
+async def get_by_id(
+    runsheet_id: str,
+    db: Session,
+    user_id: str | None = None,
+) -> RunSheetResponse:
+    q = db.query(RunSheetRecord).filter(RunSheetRecord.id == runsheet_id)
+    if user_id:
+        q = q.filter(RunSheetRecord.user_id == user_id)
+    record = q.first()
     if not record:
         raise NotFoundException(f"Run-sheet '{runsheet_id}' not found")
     return _record_to_response(record)

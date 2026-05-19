@@ -1,5 +1,8 @@
 import { Route, Routes } from 'react-router-dom'
 
+import { ProtectedRoute } from './components/ProtectedRoute'
+import LoginPage from './features/auth/LoginPage'
+import RegisterPage from './features/auth/RegisterPage'
 import InputFormPage from './features/input-form'
 import TimelinePage from './features/timeline'
 
@@ -22,10 +25,23 @@ function ExportPage() {
 function App() {
   return (
     <Routes>
-      <Route path="/" element={<InputFormPage />} />
-      <Route path="/timeline" element={<TimelinePage />} />
-      <Route path="/history" element={<HistoryPage />} />
-      <Route path="/export" element={<ExportPage />} />
+      {/* Public routes */}
+      <Route path="/login"    element={<LoginPage />} />
+      <Route path="/register" element={<RegisterPage />} />
+
+      {/* Protected routes */}
+      <Route path="/" element={
+        <ProtectedRoute><InputFormPage /></ProtectedRoute>
+      } />
+      <Route path="/timeline" element={
+        <ProtectedRoute><TimelinePage /></ProtectedRoute>
+      } />
+      <Route path="/history" element={
+        <ProtectedRoute><HistoryPage /></ProtectedRoute>
+      } />
+      <Route path="/export" element={
+        <ProtectedRoute><ExportPage /></ProtectedRoute>
+      } />
     </Routes>
   )
 }

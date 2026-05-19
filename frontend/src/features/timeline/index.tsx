@@ -1,6 +1,7 @@
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 
 import { useRunsheetStore } from '../../store/runsheetStore'
+import { useAuthStore } from '../../store/authStore'
 import { useUiStore } from '../../store/uiStore'
 import { ConflictPanel } from './components/ConflictPanel'
 import { RecommendationsPanel } from './components/RecommendationsPanel'
@@ -15,6 +16,8 @@ export default function TimelinePage() {
   const recommendations  = useRunsheetStore(s => s.recommendations)
   const stats            = useRunsheetStore(s => s.stats)
   const fixingConflictId = useUiStore(s => s.fixingConflictId)
+  const logout           = useAuthStore(s => s.logout)
+  const navigate         = useNavigate()
 
   const runsheetId = currentRunsheet?.runsheet_id ?? ''
   const { applyFix } = useApplyFix(runsheetId)
@@ -69,6 +72,12 @@ export default function TimelinePage() {
           >
             Export ↗
           </Link>
+          <button
+            onClick={() => { logout(); navigate('/login', { replace: true }) }}
+            className="text-[#8891a8] text-sm hover:text-[#ef4444] transition-colors"
+          >
+            Sign out
+          </button>
         </div>
       </div>
 

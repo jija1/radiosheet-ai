@@ -2,6 +2,8 @@ import { useState } from 'react'
 import type { ChangeEvent, FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 
+import { useAuthStore } from '../../store/authStore'
+
 import { generateRunsheet } from '../../api/runsheet'
 import { useRunsheetStore } from '../../store/runsheetStore'
 import type { ProgrammeType, TalkMusicPreference } from '../../types/runsheet'
@@ -33,6 +35,7 @@ export default function InputFormPage() {
   const setLoading = useRunsheetStore(s => s.setLoading)
   const setRunsheet = useRunsheetStore(s => s.setRunsheet)
   const setStoreError = useRunsheetStore(s => s.setError)
+  const logout = useAuthStore(s => s.logout)
 
   const navigate = useNavigate()
   const errors = useFormValidation(form)
@@ -90,13 +93,21 @@ export default function InputFormPage() {
 
         {/* Header */}
         <div className="mb-8">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-8 h-8 rounded-lg bg-[#1a2a4a] flex items-center justify-center">
-              <span className="text-[#3b82f6] font-bold text-sm">R</span>
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-lg bg-[#1a2a4a] flex items-center justify-center">
+                <span className="text-[#3b82f6] font-bold text-sm">R</span>
+              </div>
+              <span className="text-[#e8eaf0] font-medium">
+                Radio<span className="text-[#3b82f6]">Sheet</span> AI
+              </span>
             </div>
-            <span className="text-[#e8eaf0] font-medium">
-              Radio<span className="text-[#3b82f6]">Sheet</span> AI
-            </span>
+            <button
+              onClick={() => { logout(); navigate('/login', { replace: true }) }}
+              className="text-[#8891a8] text-xs hover:text-[#ef4444] transition-colors"
+            >
+              Sign out
+            </button>
           </div>
           <h1 className="text-2xl font-semibold text-[#2E75B6] mb-1">Generate Run-Sheet</h1>
           <p className="text-[#8891a8] text-sm">

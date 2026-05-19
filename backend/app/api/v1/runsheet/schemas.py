@@ -28,6 +28,14 @@ class SegmentType(str, Enum):
     WEATHER = "weather"
     CLOSE = "close"
     INTRO = "intro"
+    SIG_TUNE = "sig_tune"
+    INTERVIEW = "interview"
+    VOX_POP = "vox_pop"
+    PHONE_IN_SEGMENT = "phone_in_segment"
+    DRAMA = "drama"
+    STORYTELLING = "storytelling"
+    SPONSOR = "sponsor"
+    SCRIPTED_REPORT = "scripted_report"
 
 
 class FixedSegment(BaseModel):
