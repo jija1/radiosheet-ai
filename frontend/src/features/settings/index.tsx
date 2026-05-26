@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 
 import { getAuditLog, getMe, getSettings, updateSettings } from '../../api/user'
 import type { AuditLogEntry, UserInfo, UserSettings } from '../../api/user'
@@ -95,6 +95,8 @@ export default function SettingsPage() {
     { label: 'Dashboard',     to: '/dashboard' },
     { label: 'New Run-sheet', to: '/' },
     { label: 'Validate',      to: '/validate' },
+    { label: 'My Station Stats', to: '/statistics' },
+    { label: 'Privacy & Data', to: '/privacy' },
     { label: 'Sign out', onClick: () => { logout(); navigate('/login') }, danger: true as const },
   ]
 
@@ -327,6 +329,25 @@ export default function SettingsPage() {
             </section>
           </>
         )}
+
+        {/* ── Privacy & Data ──────────────────────────────────────────── */}
+        <section>
+          <h2 className="text-[#e8eaf0] font-medium mb-3">Privacy &amp; Data</h2>
+          <div className="bg-[#13151f] border border-[#1e2133] rounded-xl p-6 flex items-center justify-between gap-4 flex-wrap">
+            <div>
+              <p className="text-[#e8eaf0] text-sm font-medium">Manage your data</p>
+              <p className="text-[#8891a8] text-xs mt-0.5">
+                Export your data, change audit log retention, opt out of analytics, or delete your account.
+              </p>
+            </div>
+            <Link
+              to="/privacy"
+              className="bg-[#0f1117] hover:bg-[#1e2133] border border-[#1e2133] text-[#e8eaf0] text-sm px-4 py-2 rounded-lg transition-colors"
+            >
+              Open Privacy &amp; Data
+            </Link>
+          </div>
+        </section>
 
         {/* ── Audit Log ───────────────────────────────────────────────── */}
         <section>

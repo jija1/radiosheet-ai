@@ -17,6 +17,7 @@ interface RunsheetState {
   complianceScore: number
   complianceRisk: string
   complianceViolations: ComplianceViolation[]
+  deepDiveInsights: string[]
   isLoading: boolean
   error: string | null
   setRunsheet: (runsheet: RunSheetResponse) => void
@@ -38,6 +39,7 @@ export const useRunsheetStore = create<RunsheetState>()((set) => ({
   complianceScore: 100,
   complianceRisk: 'compliant',
   complianceViolations: [],
+  deepDiveInsights: [],
   isLoading: false,
   error: null,
 
@@ -51,6 +53,7 @@ export const useRunsheetStore = create<RunsheetState>()((set) => ({
       complianceScore: runsheet.compliance_score,
       complianceRisk: runsheet.compliance_risk,
       complianceViolations: runsheet.compliance_violations,
+      deepDiveInsights: runsheet.deep_dive_insights ?? [],
     }),
 
   updateSegments: (segments) => set({ segments }),
@@ -76,6 +79,7 @@ export const useRunsheetStore = create<RunsheetState>()((set) => ({
       complianceScore: 100,
       complianceRisk: 'compliant',
       complianceViolations: [],
+      deepDiveInsights: [],
       isLoading: false,
       error: null,
     }),

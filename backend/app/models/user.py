@@ -28,3 +28,7 @@ class User(Base):
     default_region              = Column(String(30),   nullable=True)
     station_audience            = Column(String(10),   nullable=True)
     recommendation_depth        = Column(String(10),   nullable=False, default="standard")
+
+    # Privacy controls (Session K2)
+    analytics_opted_out         = Column(Boolean,      nullable=False, default=False)
+    audit_log_retention_days    = Column(Integer,      nullable=False, default=90)

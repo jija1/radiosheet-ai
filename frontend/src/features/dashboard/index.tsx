@@ -78,6 +78,7 @@ export default function DashboardPage() {
   const navItems = [
     { label: 'New Run-sheet', to: '/' },
     { label: 'Validate',      to: '/validate' },
+    { label: 'My Station Stats', to: '/statistics' },
     { label: 'Settings',      to: '/settings' },
     { label: 'Sign out', onClick: () => { logout(); navigate('/login') }, danger: true as const },
   ]
@@ -105,7 +106,12 @@ export default function DashboardPage() {
         {data && (
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <StatCard label="Total Run-sheets" value={data.total_runsheets} />
-            <StatCard label="Average Score" value={data.total_runsheets > 0 ? `${data.average_score}%` : '—'} />
+            <StatCard
+              label="Average Score"
+              value={data.total_runsheets > 0
+                ? `${Math.round(data.average_score * 100)}%`
+                : '—'}
+            />
             <StatCard label="Total Conflicts" value={data.total_conflicts_resolved} />
           </div>
         )}
@@ -157,13 +163,16 @@ export default function DashboardPage() {
                         <td className="px-4 py-3 text-[#e8eaf0] font-medium">{rs.station_name}</td>
                         <td className="px-4 py-3 text-[#8891a8] hidden sm:table-cell">{formatProgrammeType(rs.programme_type)}</td>
                         <td className="px-4 py-3 text-right">
-                          <span
-                            className={`font-medium ${
-                              rs.score >= 80 ? 'text-[#22c55e]' : rs.score >= 60 ? 'text-[#f59e0b]' : 'text-[#ef4444]'
-                            }`}
-                          >
-                            {rs.score.toFixed(0)}%
-                          </span>
+                          {(() => {
+                            const pct = Math.round(rs.score * 100)
+                            const cls =
+                              pct >= 80 ? 'text-[#22c55e]'
+                              : pct >= 60 ? 'text-[#f59e0b]'
+                              : 'text-[#ef4444]'
+                            return (
+                              <span className={`font-medium ${cls}`}>{pct}%</span>
+                            )
+                          })()}
                         </td>
                         <td className="px-4 py-3 text-right hidden sm:table-cell">
                           <span className={rs.conflict_count > 0 ? 'text-[#ef4444]' : 'text-[#22c55e]'}>

@@ -82,6 +82,7 @@ export default function TimelinePage() {
   const complianceScore      = useRunsheetStore(s => s.complianceScore)
   const complianceRisk       = useRunsheetStore(s => s.complianceRisk)
   const complianceViolations = useRunsheetStore(s => s.complianceViolations)
+  const deepDiveInsights     = useRunsheetStore(s => s.deepDiveInsights)
   const fixingConflictId     = useUiStore(s => s.fixingConflictId)
   const logout               = useAuthStore(s => s.logout)
   const authUser             = useAuthStore(s => s.user)
@@ -306,6 +307,22 @@ export default function TimelinePage() {
           <div className="border-t border-[#1e2133] pt-6">
             <RecommendationsPanel recommendations={recommendations} />
           </div>
+
+          {deepDiveInsights.length > 0 && (
+            <div
+              className="border-l-2 rounded-lg p-4 bg-[#13151f] border border-[#1e2133]"
+              style={{ borderLeftColor: '#2E75B6' }}
+            >
+              <h3 className="text-[#2E75B6] font-medium text-sm mb-2">Deep Dive Insights</h3>
+              <ul className="space-y-2">
+                {deepDiveInsights.map((insight, i) => (
+                  <li key={i} className="text-[#8891a8] text-xs leading-relaxed">
+                    {insight}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
         </div>
       </div>
 

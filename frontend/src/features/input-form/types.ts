@@ -9,6 +9,7 @@ export interface FormState {
   presenter_name: string
   max_advert_blocks_per_hour: number
   talk_music_preference: TalkMusicPreference
+  deep_dive: boolean
 }
 
 export interface FormErrors {
@@ -30,4 +31,5 @@ export const DEFAULT_FORM_VALUES: FormState = {
   presenter_name: '',
   max_advert_blocks_per_hour: 3,
   talk_music_preference: 'balanced',
+  deep_dive: false,
 }

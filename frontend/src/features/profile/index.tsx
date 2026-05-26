@@ -97,6 +97,7 @@ export default function ProfilePage() {
   const navItems = [
     { label: 'Dashboard',     to: '/dashboard' },
     { label: 'New Run-sheet', to: '/' },
+    { label: 'My Station Stats', to: '/statistics' },
     { label: 'Settings',      to: '/settings' },
     { label: 'Sign out', onClick: () => { logout(); navigate('/login') }, danger: true as const },
   ]
@@ -208,7 +209,7 @@ export default function ProfilePage() {
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               {[
                 { label: 'Total Run-sheets',   value: String(profile.stats.total_runsheets) },
-                { label: 'Average Score',      value: profile.stats.total_runsheets > 0 ? `${profile.stats.average_score}%` : '—' },
+                { label: 'Average Score',      value: profile.stats.total_runsheets > 0 ? `${Math.round(profile.stats.average_score * 100)}%` : '—' },
                 { label: 'Total Conflicts',    value: String(profile.stats.total_conflicts_resolved) },
               ].map(({ label, value }) => (
                 <div key={label} className="bg-[#13151f] border border-[#1e2133] rounded-xl p-5 flex flex-col gap-1">

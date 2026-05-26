@@ -232,6 +232,26 @@ export default function InputFormPage() {
               </div>
             </FormField>
 
+            {/* Deep Dive toggle */}
+            <div className="border border-[#1e2133] rounded-lg p-4 flex items-start gap-3">
+              <button
+                type="button"
+                role="switch"
+                aria-checked={form.deep_dive}
+                onClick={() => updateField('deep_dive', !form.deep_dive)}
+                className={`relative w-10 h-5 rounded-full transition-colors shrink-0 mt-0.5 ${form.deep_dive ? 'bg-[#2E75B6]' : 'bg-[#1e2133]'}`}
+              >
+                <span className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full transition-transform ${form.deep_dive ? 'translate-x-5' : ''}`} />
+              </button>
+              <div>
+                <p className="text-[#e8eaf0] text-sm font-medium">Deep Dive Analysis</p>
+                <p className="text-[#8891a8] text-xs mt-0.5">
+                  Applies all recommendation rules, your station statistics, and cultural
+                  calendar. Takes slightly longer.
+                </p>
+              </div>
+            </div>
+
             {/* API / submit error */}
             {submitError && (
               <p className="text-[#ef4444] text-sm rounded-lg bg-[#ef444411] border border-[#ef444433] px-3 py-2">

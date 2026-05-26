@@ -49,6 +49,9 @@ class ProfileUpdateRequest(BaseModel):
     display_name: str = Field(max_length=100)
 
 
+_ALLOWED_RETENTION = {30, 90, 180, 365}
+
+
 class UserSettings(BaseModel):
     default_station_name: str | None = None
     default_presenter_name: str | None = None
@@ -64,6 +67,8 @@ class UserSettings(BaseModel):
     default_region: str | None = None
     station_audience: str | None = None
     recommendation_depth: str = "standard"
+    analytics_opted_out: bool = False
+    audit_log_retention_days: int = 90
 
     @field_validator("time_format")
     @classmethod
@@ -77,6 +82,13 @@ class UserSettings(BaseModel):
     def validate_depth(cls, v: str) -> str:
         if v not in {"light", "standard", "detailed"}:
             raise ValueError("recommendation_depth must be 'light', 'standard', or 'detailed'")
+        return v
+
+    @field_validator("audit_log_retention_days")
+    @classmethod
+    def validate_retention(cls, v: int) -> int:
+        if v not in _ALLOWED_RETENTION:
+            raise ValueError("audit_log_retention_days must be one of 30, 90, 180, 365")
         return v
 
 
@@ -95,3 +107,32 @@ class UserSettingsUpdate(BaseModel):
     default_region: str | None = None
     station_audience: str | None = None
     recommendation_depth: str | None = None
+    analytics_opted_out: bool | None = None
+    audit_log_retention_days: int | None = None
+
+    @field_validator("audit_log_retention_days")
+    @classmethod
+    def validate_retention(cls, v: int | None) -> int | None:
+        if v is None:
+            return v
+        if v not in _ALLOWED_RETENTION:
+            raise ValueError("audit_log_retention_days must be one of 30, 90, 180, 365")
+        return v
+
+
+class UserStatisticEntry(BaseModel):
+    stat_key: str = Field(max_length=100)
+    stat_value: str
+    notes: str | None = None
+    created_at: str | None = None
+    updated_at: str | None = None
+
+
+class UserStatisticUpsert(BaseModel):
+    stat_key: str = Field(max_length=100)
+    stat_value: str
+    notes: str | None = None
+
+
+class AccountDeleteRequest(BaseModel):
+    password: str

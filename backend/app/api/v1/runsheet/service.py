@@ -8,6 +8,9 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.ai import compliance_validator, conflict_detector, notes_generator, scheduling_engine, scorer
+from app.ai.recommendations.cultural_calendar import get_holiday_for_date
+from app.ai.recommendations.mood_advisor import get_mood_advice
+from app.ai.recommendations.library import LIBRARY
 from app.api.v1.runsheet.models import RunSheetRecord
 from app.api.v1.runsheet.schemas import (
     ComplianceViolation,
@@ -21,6 +24,7 @@ from app.api.v1.runsheet.schemas import (
     UpdateSegmentsRequest,
     UpdateSegmentsResponse,
 )
+from app.api.v1.user.statistics import load_user_statistics
 from app.core.exceptions import NotFoundException
 from app.models.audit_log import log_action
 
@@ -31,6 +35,27 @@ class RunSheetSummary(BaseModel):
     programme_type: str
     total_duration_minutes: int
     generated_at: str
+
+
+# ---------------------------------------------------------------------------
+# Score calculation (Session K2 — Part 4)
+# ---------------------------------------------------------------------------
+
+_SEVERITY_PENALTIES = {
+    "critical":   20,
+    "warning":    10,
+    "suggestion": 5,
+    "tip":        1,
+}
+
+
+def _quality_score(recommendations: list[Recommendation]) -> float:
+    """Quality score from recommendation severities — returned as 0.0-1.0."""
+    raw = 100
+    for r in recommendations:
+        raw -= _SEVERITY_PENALTIES.get(r.severity, 0)
+    raw = max(0, min(100, raw))
+    return round(raw / 100, 4)
 
 
 # ---------------------------------------------------------------------------
@@ -45,10 +70,23 @@ async def generate_runsheet(
     segments: list[Segment] = scheduling_engine.generate(payload)
     segments = notes_generator.generate_notes(segments, payload)
     conflicts: list[Conflict] = conflict_detector.detect_conflicts(segments, payload)
-    recommendations: list[Recommendation]
-    recommendations, score = scorer.generate_recommendations(segments, payload)
+
+    user_stats = load_user_statistics(db, str(user_id)) if user_id else {}
+
+    recommendations, _ = scorer.generate_recommendations(
+        segments,
+        payload,
+        user_stats=user_stats if user_stats else None,
+        deep_dive=payload.deep_dive,
+    )
+
+    score = _quality_score(recommendations)
     stats = _compute_stats(segments, conflicts, score)
     comp = compliance_validator.validate_compliance(segments, payload)
+
+    deep_dive_insights = _build_deep_dive_insights(
+        payload, recommendations, user_stats
+    ) if payload.deep_dive else []
 
     runsheet_id  = str(uuid.uuid4())
     generated_at = datetime.now(timezone.utc).isoformat()
@@ -83,7 +121,51 @@ async def generate_runsheet(
         compliance_violations=comp.compliance_violations,
         stats=stats,
         generated_at=generated_at,
+        deep_dive_insights=deep_dive_insights,
     )
+
+
+def _build_deep_dive_insights(
+    payload: ProgrammeInput,
+    recommendations: list[Recommendation],
+    user_stats: dict,
+) -> list[str]:
+    insights: list[str] = []
+
+    holiday = get_holiday_for_date(payload.broadcast_date)
+    if holiday:
+        insights.append(f"Cultural calendar checked: {holiday} on this date.")
+    else:
+        insights.append("Cultural calendar checked: no holidays on this date.")
+
+    try:
+        advice = get_mood_advice(payload.start_time, payload.broadcast_date.weekday())
+        genres = ", ".join(advice.get("preferred_genres", []))
+        insights.append(
+            f"Mood advisor: {payload.start_time} maps to "
+            f"{advice.get('energy_level', 'unknown')}"
+            + (f" — preferred genres: {genres}" if genres else "")
+            + "."
+        )
+    except Exception:
+        insights.append(f"Mood advisor: time-of-day analysis attempted for {payload.start_time}.")
+
+    if user_stats:
+        peak = user_stats.get("peak_listening_window")
+        if peak and getattr(peak, "stat_value", None):
+            insights.append(
+                f"User statistics applied: custom peak window {peak.stat_value} used."
+            )
+        note = user_stats.get("local_cultural_note")
+        if note and getattr(note, "stat_value", None):
+            insights.append(f"User statistics applied: local cultural note surfaced.")
+        custom = user_stats.get("custom_recommendation")
+        if custom and getattr(custom, "stat_value", None):
+            insights.append("User statistics applied: custom recommendation included.")
+
+    insights.append(f"All {len(LIBRARY)} recommendation rules evaluated.")
+
+    return insights
 
 
 # ---------------------------------------------------------------------------
@@ -151,6 +233,7 @@ def _record_to_response(record: RunSheetRecord) -> RunSheetResponse:
         compliance_violations=comp.compliance_violations,
         stats=stats,
         generated_at=record.generated_at,
+        deep_dive_insights=[],
     )
 
 
@@ -174,12 +257,21 @@ async def update_segments(
 
     segments = _recalc_times(payload.segments)
     conflicts: list[Conflict] = conflict_detector.detect_conflicts(segments, programme_input)
-    _, score = scorer.generate_recommendations(segments, programme_input)
+
+    user_stats = load_user_statistics(db, str(user_id)) if user_id else {}
+    recommendations, _ = scorer.generate_recommendations(
+        segments,
+        programme_input,
+        user_stats=user_stats if user_stats else None,
+        deep_dive=programme_input.deep_dive,
+    )
+    score = _quality_score(recommendations)
     stats = _compute_stats(segments, conflicts, score)
     comp = compliance_validator.validate_compliance(segments, programme_input)
 
     record.segments_json = json.dumps([s.model_dump(mode="json") for s in segments])
     record.conflicts_json = json.dumps([c.model_dump(mode="json") for c in conflicts])
+    record.recommendations_json = json.dumps([r.model_dump(mode="json") for r in recommendations])
     record.stats_json = json.dumps(stats.model_dump(mode="json"))
     db.commit()
     log_action(db, user_id, "segments_updated", f"runsheet_id={payload.runsheet_id}")

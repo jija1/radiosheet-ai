@@ -1,12 +1,15 @@
 from __future__ import annotations
 
 import json
+from datetime import datetime, timedelta, timezone
 
-from fastapi import APIRouter, Depends
+import bcrypt
+from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy.orm import Session
 
 from app.api.v1.runsheet.models import RunSheetRecord
 from app.api.v1.user.schemas import (
+    AccountDeleteRequest,
     AuditLogEntry,
     DashboardResponse,
     ProfileResponse,
@@ -17,11 +20,14 @@ from app.api.v1.user.schemas import (
     UserSettings,
     UserSettingsUpdate,
 )
+from app.api.v1.user.statistics import router as statistics_router
 from app.dependencies import get_current_user, get_db
 from app.models.audit_log import AuditLog
 from app.models.user import User
+from app.models.user_statistics import UserStatistic
 
 router = APIRouter()
+router.include_router(statistics_router)
 
 
 @router.get("/me", response_model=UserInfo)
@@ -34,11 +40,24 @@ async def get_me(
     )
 
 
+def _purge_old_audit_logs(db: Session, user_id: str, retention_days: int) -> None:
+    cutoff = datetime.now(timezone.utc) - timedelta(days=retention_days)
+    cutoff_iso = cutoff.isoformat()
+    db.query(AuditLog).filter(
+        AuditLog.user_id == str(user_id),
+        AuditLog.created_at < cutoff_iso,
+    ).delete(synchronize_session=False)
+    db.commit()
+
+
 @router.get("/audit-log", response_model=list[AuditLogEntry])
 async def get_audit_log(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> list[AuditLogEntry]:
+    retention = current_user.audit_log_retention_days or 90
+    _purge_old_audit_logs(db, str(current_user.id), retention)
+
     records = (
         db.query(AuditLog)
         .filter(AuditLog.user_id == str(current_user.id))
@@ -85,7 +104,7 @@ def _build_profile(db: Session, user: User) -> ProfileResponse:
         scores.append(float(stats.get("score", 0.0)))
         total_conflicts += int(stats.get("conflict_count", 0))
 
-    avg_score = round(sum(scores) / len(scores), 1) if scores else 0.0
+    avg_score = round(sum(scores) / len(scores), 3) if scores else 0.0
 
     return ProfileResponse(
         email=user.email,
@@ -136,6 +155,8 @@ def _user_to_settings(user: User) -> UserSettings:
         default_region=user.default_region,
         station_audience=user.station_audience,
         recommendation_depth=user.recommendation_depth or "standard",
+        analytics_opted_out=bool(user.analytics_opted_out) if user.analytics_opted_out is not None else False,
+        audit_log_retention_days=user.audit_log_retention_days or 90,
     )
 
 
@@ -160,7 +181,7 @@ async def get_dashboard(
         scores.append(float(stats.get("score", 0.0)))
         total_conflicts_resolved += int(stats.get("conflict_count", 0))
 
-    average_score = round(sum(scores) / len(scores), 1) if scores else 0.0
+    average_score = round(sum(scores) / len(scores), 3) if scores else 0.0
 
     recent_summaries: list[RunSheetRecordSummary] = []
     for r in records[:5]:
@@ -184,3 +205,97 @@ async def get_dashboard(
         average_score=average_score,
         total_conflicts_resolved=total_conflicts_resolved,
     )
+
+
+@router.get("/export")
+async def export_user_data(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> Response:
+    profile = _build_profile(db, current_user)
+    settings_data = _user_to_settings(current_user)
+
+    statistics = (
+        db.query(UserStatistic)
+        .filter(UserStatistic.user_id == current_user.id)
+        .all()
+    )
+    stats_data = [
+        {
+            "stat_key": s.stat_key,
+            "stat_value": s.stat_value,
+            "notes": s.notes,
+            "created_at": s.created_at,
+            "updated_at": s.updated_at,
+        }
+        for s in statistics
+    ]
+
+    runsheets = (
+        db.query(RunSheetRecord)
+        .filter(RunSheetRecord.user_id == current_user.id)
+        .order_by(RunSheetRecord.generated_at.desc())
+        .all()
+    )
+    runsheet_summaries = []
+    for r in runsheets:
+        stats = json.loads(r.stats_json)
+        prog_input = json.loads(r.programme_input_json)
+        runsheet_summaries.append({
+            "runsheet_id": r.id,
+            "programme_type": r.programme_type,
+            "station_name": r.station_name,
+            "presenter_name": r.presenter_name,
+            "broadcast_date": str(prog_input.get("broadcast_date", "")),
+            "total_duration_minutes": r.total_duration_minutes,
+            "generated_at": r.generated_at,
+            "conflict_count": int(stats.get("conflict_count", 0)),
+            "score": float(stats.get("score", 0.0)),
+        })
+
+    audit_logs = (
+        db.query(AuditLog)
+        .filter(AuditLog.user_id == str(current_user.id))
+        .order_by(AuditLog.created_at.desc())
+        .all()
+    )
+    audit_data = [
+        {"action": a.action, "detail": a.detail, "created_at": a.created_at}
+        for a in audit_logs
+    ]
+
+    payload = {
+        "exported_at": datetime.now(timezone.utc).isoformat(),
+        "profile": profile.model_dump(),
+        "settings": settings_data.model_dump(),
+        "statistics": stats_data,
+        "runsheets": runsheet_summaries,
+        "audit_log": audit_data,
+    }
+    body = json.dumps(payload, indent=2, default=str)
+    return Response(
+        content=body,
+        media_type="application/json",
+        headers={"Content-Disposition": 'attachment; filename="radiosheet_data.json"'},
+    )
+
+
+@router.delete("/account", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_account(
+    payload: AccountDeleteRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> None:
+    if not bcrypt.checkpw(payload.password.encode("utf-8"),
+                          current_user.hashed_password.encode("utf-8")):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect password",
+        )
+
+    user_id = current_user.id
+    db.query(UserStatistic).filter(UserStatistic.user_id == user_id).delete(synchronize_session=False)
+    db.query(RunSheetRecord).filter(RunSheetRecord.user_id == user_id).delete(synchronize_session=False)
+    db.query(AuditLog).filter(AuditLog.user_id == str(user_id)).delete(synchronize_session=False)
+    db.delete(current_user)
+    db.commit()

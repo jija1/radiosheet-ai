@@ -64,6 +64,7 @@ class ProgrammeInput(BaseModel):
     max_advert_blocks_per_hour: int = Field(ge=1, le=6, default=3)
     fixed_segments: list[FixedSegment] = []
     talk_music_preference: TalkMusicPreference = TalkMusicPreference.BALANCED
+    deep_dive: bool = False
 
     @field_validator("station_name", "presenter_name", mode="before")
     @classmethod
@@ -135,6 +136,7 @@ class RunSheetResponse(BaseModel):
     compliance_violations: list[ComplianceViolation]
     stats: RunSheetStats
     generated_at: str
+    deep_dive_insights: list[str] = []
 
 
 class FixRequest(BaseModel):

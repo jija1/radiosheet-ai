@@ -7,8 +7,10 @@ import RegisterPage from './features/auth/RegisterPage'
 import DashboardPage from './features/dashboard'
 import ExportPage from './features/export'
 import InputFormPage from './features/input-form'
+import PrivacyPage from './features/privacy'
 import ProfilePage from './features/profile'
 import SettingsPage from './features/settings'
+import StatisticsPage from './features/statistics'
 import TimelinePage from './features/timeline'
 import ValidatePage from './features/validate'
 
@@ -49,6 +51,12 @@ function App() {
         } />
         <Route path="/settings" element={
           <ProtectedRoute><SettingsPage /></ProtectedRoute>
+        } />
+        <Route path="/statistics" element={
+          <ProtectedRoute><StatisticsPage /></ProtectedRoute>
+        } />
+        <Route path="/privacy" element={
+          <ProtectedRoute><PrivacyPage /></ProtectedRoute>
         } />
         <Route path="/export" element={
           <ProtectedRoute><ExportPage /></ProtectedRoute>

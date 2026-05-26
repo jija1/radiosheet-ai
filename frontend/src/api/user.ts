@@ -72,6 +72,8 @@ export interface UserSettings {
   default_region: string | null
   station_audience: string | null
   recommendation_depth: string
+  analytics_opted_out: boolean
+  audit_log_retention_days: number
 }
 
 export const getSettings = (): Promise<UserSettings> =>
@@ -79,3 +81,44 @@ export const getSettings = (): Promise<UserSettings> =>
 
 export const updateSettings = (payload: Partial<UserSettings>): Promise<UserSettings> =>
   client.patch<UserSettings>('/api/v1/user/settings', payload).then((r) => r.data)
+
+/* ── User statistics (Session K2) ───────────────────────────────────────── */
+
+export interface UserStatistic {
+  stat_key: string
+  stat_value: string
+  notes: string | null
+  created_at: string | null
+  updated_at: string | null
+}
+
+export const listStatistics = (): Promise<UserStatistic[]> =>
+  client.get<UserStatistic[]>('/api/v1/user/statistics').then((r) => r.data)
+
+export const upsertStatistic = (payload: {
+  stat_key: string
+  stat_value: string
+  notes?: string | null
+}): Promise<UserStatistic> =>
+  client.post<UserStatistic>('/api/v1/user/statistics', payload).then((r) => r.data)
+
+export const deleteStatistic = (stat_key: string): Promise<void> =>
+  client.delete(`/api/v1/user/statistics/${encodeURIComponent(stat_key)}`).then(() => undefined)
+
+/* ── Privacy controls (Session K2) ─────────────────────────────────────── */
+
+export const downloadUserExport = async (): Promise<void> => {
+  const response = await client.get('/api/v1/user/export', { responseType: 'blob' })
+  const blob = new Blob([response.data], { type: 'application/json' })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = 'radiosheet_data.json'
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+  URL.revokeObjectURL(url)
+}
+
+export const deleteAccount = (password: string): Promise<void> =>
+  client.delete('/api/v1/user/account', { data: { password } }).then(() => undefined)

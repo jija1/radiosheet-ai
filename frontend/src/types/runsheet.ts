@@ -45,6 +45,7 @@ export interface ProgrammeInput {
   max_advert_blocks_per_hour: number
   fixed_segments: FixedSegment[]
   talk_music_preference: TalkMusicPreference
+  deep_dive?: boolean
 }
 
 export interface Segment {
@@ -105,6 +106,7 @@ export interface RunSheetResponse {
   compliance_violations: ComplianceViolation[]
   stats: RunSheetStats
   generated_at: string
+  deep_dive_insights?: string[]
 }
 
 export interface FixRequest {
