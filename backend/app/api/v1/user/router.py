@@ -14,6 +14,8 @@ from app.api.v1.user.schemas import (
     ProfileUpdateRequest,
     RunSheetRecordSummary,
     UserInfo,
+    UserSettings,
+    UserSettingsUpdate,
 )
 from app.dependencies import get_current_user, get_db
 from app.models.audit_log import AuditLog
@@ -95,6 +97,45 @@ def _build_profile(db: Session, user: User) -> ProfileResponse:
             average_score=avg_score,
             total_conflicts_resolved=total_conflicts,
         ),
+    )
+
+
+@router.get("/settings", response_model=UserSettings)
+async def get_settings(
+    current_user: User = Depends(get_current_user),
+) -> UserSettings:
+    return _user_to_settings(current_user)
+
+
+@router.patch("/settings", response_model=UserSettings)
+async def update_settings(
+    payload: UserSettingsUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> UserSettings:
+    update = payload.model_dump(exclude_none=True)
+    for field, value in update.items():
+        setattr(current_user, field, value)
+    db.commit()
+    return _user_to_settings(current_user)
+
+
+def _user_to_settings(user: User) -> UserSettings:
+    return UserSettings(
+        default_station_name=user.default_station_name,
+        default_presenter_name=user.default_presenter_name,
+        default_programme_type=user.default_programme_type,
+        default_duration_minutes=user.default_duration_minutes,
+        default_talk_music_preference=user.default_talk_music_preference,
+        default_max_adverts_per_hour=user.default_max_adverts_per_hour,
+        time_format=user.time_format or "24h",
+        cultural_calendar_enabled=user.cultural_calendar_enabled if user.cultural_calendar_enabled is not None else True,
+        strict_mode=user.strict_mode if user.strict_mode is not None else False,
+        auto_apply_fixes=user.auto_apply_fixes if user.auto_apply_fixes is not None else False,
+        notifications_enabled=user.notifications_enabled if user.notifications_enabled is not None else True,
+        default_region=user.default_region,
+        station_audience=user.station_audience,
+        recommendation_depth=user.recommendation_depth or "standard",
     )
 
 

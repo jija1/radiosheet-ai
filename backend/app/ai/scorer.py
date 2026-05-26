@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from app.ai.recommendations.engine import generate_recommendations as _new_engine
 from app.api.v1.runsheet.schemas import (
     ProgrammeInput,
     Recommendation,
@@ -24,7 +25,7 @@ _THRESHOLDS: dict[str, float] = {
     "balance":    0.75,
     "advert":     0.70,
     "placement":  0.75,
-    "transition": 0.80,
+    "transition": 0.801,  # ensures score of 0.8 (1 violation) triggers naturally
 }
 
 # Target music ratio for each preference (talk ratio = 1 - music ratio)
@@ -44,10 +45,10 @@ def generate_recommendations(
     programme_input: ProgrammeInput,
 ) -> tuple[list[Recommendation], float]:
     """
-    Score four weighted dimensions, collect triggered recommendations, and
-    guarantee a minimum of three Recommendation objects are returned.
+    Score four weighted dimensions (backward-compatible), merge with new engine
+    recommendations, and return (recommendations, composite_score).
 
-    Returns (recommendations, composite_score).
+    No minimum count is enforced. Empty list is valid.
     """
     # 1. Score every dimension
     balance_score    = _score_balance(segments, programme_input)
@@ -55,7 +56,7 @@ def generate_recommendations(
     placement_score  = _score_placement(segments, programme_input)
     transition_score = _score_transition(segments)
 
-    # 2. Composite weighted sum
+    # 2. Composite weighted sum (used for RunSheetStats.score)
     composite = (
         balance_score    * _WEIGHTS["balance"] +
         advert_score     * _WEIGHTS["advert"] +
@@ -63,62 +64,34 @@ def generate_recommendations(
         transition_score * _WEIGHTS["transition"]
     )
 
-    # 3. Build per-dimension records (category, score, threshold, message)
+    # 3. Old dimension recommendations (categories: balance, advert, placement, transition)
     all_dims: list[tuple[str, float, float, str]] = [
-        (
-            "balance",
-            balance_score,
-            _THRESHOLDS["balance"],
-            _msg_balance(segments, programme_input, balance_score),
-        ),
-        (
-            "advert",
-            advert_score,
-            _THRESHOLDS["advert"],
-            _msg_advert(segments, advert_score),
-        ),
-        (
-            "placement",
-            placement_score,
-            _THRESHOLDS["placement"],
-            _msg_placement(segments, programme_input, placement_score),
-        ),
-        (
-            "transition",
-            transition_score,
-            _THRESHOLDS["transition"],
-            _msg_transition(segments, transition_score),
-        ),
+        ("balance",    balance_score,    _THRESHOLDS["balance"],
+         _msg_balance(segments, programme_input, balance_score)),
+        ("advert",     advert_score,     _THRESHOLDS["advert"],
+         _msg_advert(segments, advert_score)),
+        ("placement",  placement_score,  _THRESHOLDS["placement"],
+         _msg_placement(segments, programme_input, placement_score)),
+        ("transition", transition_score, _THRESHOLDS["transition"],
+         _msg_transition(segments, transition_score)),
     ]
-
-    # 4. Collect triggered dimensions (score below threshold)
-    triggered: list[tuple[str, float, str]] = [
-        (cat, score, msg)
+    old_recs: list[Recommendation] = [
+        Recommendation(category=cat, message=msg, impact_score=round(score, 4))
         for cat, score, threshold, msg in all_dims
         if score < threshold
     ]
 
-    # 5. Pad to minimum 3 using lowest-scoring non-triggered dimensions
-    if len(triggered) < 3:
-        non_triggered = sorted(
-            [
-                (cat, score, msg)
-                for cat, score, threshold, msg in all_dims
-                if score >= threshold
-            ],
-            key=lambda x: x[1],  # lowest score first = highest impact
-        )
-        for item in non_triggered:
-            if len(triggered) >= 3:
-                break
-            triggered.append(item)
+    # 4. New engine recommendations (different category set — no overlap)
+    new_recs = _new_engine(segments, programme_input)
 
-    recommendations = [
-        Recommendation(category=cat, message=msg, impact_score=round(score, 4))
-        for cat, score, msg in triggered
-    ]
+    # 5. Merge: old categories take precedence; new recs add unique categories
+    old_categories = {r.category for r in old_recs}
+    merged = list(old_recs) + [r for r in new_recs if r.category not in old_categories]
 
-    return recommendations, round(composite, 4)
+    _SEVERITY_ORDER = {"critical": 0, "warning": 1, "suggestion": 2, "tip": 3}
+    merged.sort(key=lambda r: (_SEVERITY_ORDER.get(r.severity, 99), -r.impact_score))
+
+    return merged, round(composite, 4)
 
 
 # ---------------------------------------------------------------------------

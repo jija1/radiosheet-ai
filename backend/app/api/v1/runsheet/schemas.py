@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import date
 from enum import Enum
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 class ProgrammeType(str, Enum):
@@ -11,6 +11,10 @@ class ProgrammeType(str, Enum):
     DRIVE_TIME = "drive_time"
     NEWS_HOUR = "news_hour"
     MUSIC_ONLY = "music_only"
+    SPORTS_SHOW = "sports_show"
+    TALK_SHOW = "talk_show"
+    RELIGIOUS_SHOW = "religious_show"
+    FARMER_SHOW = "farmer_show"
 
 
 class TalkMusicPreference(str, Enum):
@@ -44,6 +48,11 @@ class FixedSegment(BaseModel):
     start_time: str | None = None
     duration_minutes: int = Field(ge=1, le=120)
 
+    @field_validator("name", mode="before")
+    @classmethod
+    def strip_name(cls, v: str) -> str:
+        return v.strip() if isinstance(v, str) else v
+
 
 class ProgrammeInput(BaseModel):
     programme_type: ProgrammeType
@@ -55,6 +64,11 @@ class ProgrammeInput(BaseModel):
     max_advert_blocks_per_hour: int = Field(ge=1, le=6, default=3)
     fixed_segments: list[FixedSegment] = []
     talk_music_preference: TalkMusicPreference = TalkMusicPreference.BALANCED
+
+    @field_validator("station_name", "presenter_name", mode="before")
+    @classmethod
+    def strip_strings(cls, v: str) -> str:
+        return v.strip() if isinstance(v, str) else v
 
 
 class Segment(BaseModel):
@@ -80,6 +94,11 @@ class Recommendation(BaseModel):
     category: str
     message: str
     impact_score: float
+    source: str = "industry best practice"
+    confidence: str = "medium"
+    severity: str = "suggestion"
+    based_on_history: bool = False
+    recommendation_id: str = ""
 
 
 class ComplianceViolation(BaseModel):

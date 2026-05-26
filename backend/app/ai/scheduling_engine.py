@@ -32,10 +32,14 @@ SEGMENT_COLOURS: dict[SegmentType, str] = {
 _TemplateDict = dict[str, float]
 
 TEMPLATES: dict[ProgrammeType, _TemplateDict] = {
-    ProgrammeType.MORNING_SHOW: {"music": 0.45, "talk": 0.30, "news": 0.10, "advert": 0.15},
-    ProgrammeType.DRIVE_TIME:   {"music": 0.40, "talk": 0.35, "news": 0.10, "advert": 0.15},
-    ProgrammeType.NEWS_HOUR:    {"music": 0.10, "talk": 0.30, "news": 0.50, "advert": 0.10},
-    ProgrammeType.MUSIC_ONLY:   {"music": 0.75, "talk": 0.05, "news": 0.00, "advert": 0.20},
+    ProgrammeType.MORNING_SHOW:   {"music": 0.45, "talk": 0.30, "news": 0.10, "advert": 0.15},
+    ProgrammeType.DRIVE_TIME:     {"music": 0.40, "talk": 0.35, "news": 0.10, "advert": 0.15},
+    ProgrammeType.NEWS_HOUR:      {"music": 0.10, "talk": 0.30, "news": 0.50, "advert": 0.10},
+    ProgrammeType.MUSIC_ONLY:     {"music": 0.75, "talk": 0.05, "news": 0.00, "advert": 0.20},
+    ProgrammeType.SPORTS_SHOW:    {"music": 0.25, "talk": 0.45, "news": 0.10, "advert": 0.20},
+    ProgrammeType.TALK_SHOW:      {"music": 0.15, "talk": 0.60, "news": 0.10, "advert": 0.15},
+    ProgrammeType.RELIGIOUS_SHOW: {"music": 0.50, "talk": 0.35, "news": 0.00, "advert": 0.15},
+    ProgrammeType.FARMER_SHOW:    {"music": 0.30, "talk": 0.50, "news": 0.10, "advert": 0.10},
 }
 
 # Minutes reserved for mandatory bookend segments (intro + station_id + close)

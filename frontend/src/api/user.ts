@@ -56,3 +56,26 @@ export const getProfile = (): Promise<ProfileData> =>
 
 export const updateProfile = (display_name: string): Promise<ProfileData> =>
   client.patch<ProfileData>('/api/v1/user/profile', { display_name }).then((r) => r.data)
+
+export interface UserSettings {
+  default_station_name: string | null
+  default_presenter_name: string | null
+  default_programme_type: string | null
+  default_duration_minutes: number | null
+  default_talk_music_preference: string | null
+  default_max_adverts_per_hour: number | null
+  time_format: string
+  cultural_calendar_enabled: boolean
+  strict_mode: boolean
+  auto_apply_fixes: boolean
+  notifications_enabled: boolean
+  default_region: string | null
+  station_audience: string | null
+  recommendation_depth: string
+}
+
+export const getSettings = (): Promise<UserSettings> =>
+  client.get<UserSettings>('/api/v1/user/settings').then((r) => r.data)
+
+export const updateSettings = (payload: Partial<UserSettings>): Promise<UserSettings> =>
+  client.patch<UserSettings>('/api/v1/user/settings', payload).then((r) => r.data)

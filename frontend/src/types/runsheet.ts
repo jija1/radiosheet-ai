@@ -1,4 +1,12 @@
-export type ProgrammeType = 'morning_show' | 'drive_time' | 'news_hour' | 'music_only'
+export type ProgrammeType =
+  | 'morning_show'
+  | 'drive_time'
+  | 'news_hour'
+  | 'music_only'
+  | 'sports_show'
+  | 'talk_show'
+  | 'religious_show'
+  | 'farmer_show'
 
 export type TalkMusicPreference = 'heavy_music' | 'balanced' | 'talk_heavy'
 
@@ -62,6 +70,11 @@ export interface Recommendation {
   category: string
   message: string
   impact_score: number
+  source: string
+  confidence: string
+  severity: string
+  based_on_history: boolean
+  recommendation_id: string
 }
 
 export interface ComplianceViolation {

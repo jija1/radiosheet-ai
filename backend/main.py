@@ -1,6 +1,9 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from slowapi.errors import RateLimitExceeded
 from app.api.v1.router import router as v1_router
+from app.core.limiter import limiter
 from app.db.session import engine, Base
 
 Base.metadata.create_all(bind=engine)
@@ -18,8 +21,16 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(v1_router, prefix="/api/v1")
+app.state.limiter = limiter
 
+async def _rate_limit_handler(request: Request, exc: RateLimitExceeded) -> JSONResponse:
+    return JSONResponse(
+        status_code=429,
+        content={"detail": "Too many requests, please try again later"},
+    )
+
+app.add_exception_handler(RateLimitExceeded, _rate_limit_handler)
+app.include_router(v1_router, prefix="/api/v1")
 
 @app.get("/")
 async def root():

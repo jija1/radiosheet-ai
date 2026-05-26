@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 class RunSheetRecordSummary(BaseModel):
@@ -47,3 +47,51 @@ class ProfileResponse(BaseModel):
 
 class ProfileUpdateRequest(BaseModel):
     display_name: str = Field(max_length=100)
+
+
+class UserSettings(BaseModel):
+    default_station_name: str | None = None
+    default_presenter_name: str | None = None
+    default_programme_type: str | None = None
+    default_duration_minutes: int | None = None
+    default_talk_music_preference: str | None = None
+    default_max_adverts_per_hour: int | None = None
+    time_format: str = "24h"
+    cultural_calendar_enabled: bool = True
+    strict_mode: bool = False
+    auto_apply_fixes: bool = False
+    notifications_enabled: bool = True
+    default_region: str | None = None
+    station_audience: str | None = None
+    recommendation_depth: str = "standard"
+
+    @field_validator("time_format")
+    @classmethod
+    def validate_time_format(cls, v: str) -> str:
+        if v not in {"12h", "24h"}:
+            raise ValueError("time_format must be '12h' or '24h'")
+        return v
+
+    @field_validator("recommendation_depth")
+    @classmethod
+    def validate_depth(cls, v: str) -> str:
+        if v not in {"light", "standard", "detailed"}:
+            raise ValueError("recommendation_depth must be 'light', 'standard', or 'detailed'")
+        return v
+
+
+class UserSettingsUpdate(BaseModel):
+    default_station_name: str | None = None
+    default_presenter_name: str | None = None
+    default_programme_type: str | None = None
+    default_duration_minutes: int | None = None
+    default_talk_music_preference: str | None = None
+    default_max_adverts_per_hour: int | None = None
+    time_format: str | None = None
+    cultural_calendar_enabled: bool | None = None
+    strict_mode: bool | None = None
+    auto_apply_fixes: bool | None = None
+    notifications_enabled: bool | None = None
+    default_region: str | None = None
+    station_audience: str | None = None
+    recommendation_depth: str | None = None

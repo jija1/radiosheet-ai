@@ -15,10 +15,14 @@ import { DEFAULT_FORM_VALUES } from './types'
 import type { FormState } from './types'
 
 const PROGRAMME_OPTIONS: { value: ProgrammeType; label: string }[] = [
-  { value: 'morning_show', label: 'Morning Show' },
-  { value: 'drive_time',   label: 'Drive-time' },
-  { value: 'news_hour',    label: 'News Hour' },
-  { value: 'music_only',   label: 'Music Only' },
+  { value: 'morning_show',   label: 'Morning Show' },
+  { value: 'drive_time',     label: 'Drive-time' },
+  { value: 'news_hour',      label: 'News Hour' },
+  { value: 'music_only',     label: 'Music Only' },
+  { value: 'sports_show',    label: 'Sports Show' },
+  { value: 'talk_show',      label: 'Talk Show' },
+  { value: 'religious_show', label: 'Religious Show' },
+  { value: 'farmer_show',    label: 'Farmer Show' },
 ]
 
 const PREFERENCE_OPTIONS: { value: TalkMusicPreference; label: string }[] = [

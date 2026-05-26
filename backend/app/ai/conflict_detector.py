@@ -5,6 +5,7 @@ import uuid
 from app.api.v1.runsheet.schemas import (
     Conflict,
     ProgrammeInput,
+    ProgrammeType,
     Segment,
     SegmentType,
 )
@@ -26,13 +27,20 @@ _COLOURS: dict[SegmentType, str] = {
 def detect_conflicts(
     segments: list[Segment],
     programme_input: ProgrammeInput,
+    user_settings: dict | None = None,
 ) -> list[Conflict]:
+    settings = user_settings or {}
     conflicts: list[Conflict] = []
     conflicts.extend(_check_c001(segments))
     conflicts.extend(_check_c002(segments, programme_input))
     conflicts.extend(_check_c003(segments, programme_input))
     conflicts.extend(_check_c004(segments, programme_input))
     conflicts.extend(_check_c005(segments))
+    conflicts.extend(_check_c006(segments, programme_input))
+    conflicts.extend(_check_c007(segments, programme_input))
+    conflicts.extend(_check_c008(segments, programme_input))
+    conflicts.extend(_check_c009(segments, programme_input))
+    conflicts.extend(_check_c010(segments, programme_input, settings))
     return conflicts
 
 
@@ -283,6 +291,393 @@ def _check_c005(segments: list[Segment]) -> list[Conflict]:
                     },
                 )
             )
+    return conflicts
+
+
+# ---------------------------------------------------------------------------
+# C006 — Programme / Time Mismatch
+# ---------------------------------------------------------------------------
+
+_C006_WINDOWS: dict[ProgrammeType, list[tuple[int, int]]] = {
+    ProgrammeType.MORNING_SHOW:   [(4 * 60, 10 * 60)],
+    ProgrammeType.DRIVE_TIME:     [(6 * 60, 9 * 60), (15 * 60, 19 * 60)],
+    ProgrammeType.NEWS_HOUR:      [(4 * 60, 2 * 60 + 24 * 60)],  # any except 02:00-04:00
+    ProgrammeType.FARMER_SHOW:    [(4 * 60, 7 * 60), (17 * 60, 19 * 60)],
+    ProgrammeType.RELIGIOUS_SHOW: [(5 * 60, 9 * 60), (18 * 60, 21 * 60)],
+}
+
+_C006_RECOMMENDED: dict[ProgrammeType, str] = {
+    ProgrammeType.MORNING_SHOW:   "05:00–10:00",
+    ProgrammeType.DRIVE_TIME:     "06:00–09:00 or 15:00–19:00",
+    ProgrammeType.NEWS_HOUR:      "any time except 02:00–04:00 (dead air)",
+    ProgrammeType.FARMER_SHOW:    "04:00–07:00 or 17:00–19:00",
+    ProgrammeType.RELIGIOUS_SHOW: "05:00–09:00 or 18:00–21:00",
+}
+
+
+def _check_c006(
+    segments: list[Segment],
+    programme_input: ProgrammeInput,
+) -> list[Conflict]:
+    windows = _C006_WINDOWS.get(programme_input.programme_type)
+    if windows is None:
+        return []
+
+    start_mins = _hhmm_to_minutes(programme_input.start_time)
+
+    # Special case: NEWS_HOUR must NOT start between 02:00-04:00
+    if programme_input.programme_type == ProgrammeType.NEWS_HOUR:
+        if 2 * 60 <= start_mins < 4 * 60:
+            return [Conflict(
+                rule_id="C006",
+                severity="warning",
+                message=(
+                    "News Hour scheduled in dead-air window 02:00–04:00. "
+                    "Audience reach is negligible in this slot."
+                ),
+                affected_segment_ids=[],
+                suggested_fix={
+                    "action": "reschedule",
+                    "recommended_start": "06:00",
+                    "source": "GeoPoll Ghana Media Measurement Report 2018",
+                },
+            )]
+        return []
+
+    in_window = any(lo <= start_mins < hi for lo, hi in windows)
+    if not in_window:
+        recommended = _C006_RECOMMENDED[programme_input.programme_type]
+        return [Conflict(
+            rule_id="C006",
+            severity="warning",
+            message=(
+                f"{programme_input.programme_type.value.replace('_', ' ').title()} "
+                f"starts at {programme_input.start_time}, outside recommended window "
+                f"({recommended}). Audience reach may be significantly reduced."
+            ),
+            affected_segment_ids=[],
+            suggested_fix={
+                "action": "reschedule",
+                "recommended_window": recommended,
+                "source": "GeoPoll Ghana Media Measurement Report 2018",
+            },
+        )]
+    return []
+
+
+# ---------------------------------------------------------------------------
+# C007 — Music Mood vs Time Mismatch  (informational — no auto-fix)
+# ---------------------------------------------------------------------------
+
+def _check_c007(
+    segments: list[Segment],
+    programme_input: ProgrammeInput,
+) -> list[Conflict]:
+    start_mins = _hhmm_to_minutes(programme_input.start_time)
+    music_segs = [s for s in segments if s.type == SegmentType.MUSIC]
+    if not music_segs:
+        return []
+
+    # High-energy music before 06:00 is mood-inappropriate
+    early_music = [s for s in music_segs if _hhmm_to_minutes(s.start_time) < 6 * 60]
+    if early_music:
+        return [Conflict(
+            rule_id="C007",
+            severity="suggestion",
+            message=(
+                f"{len(early_music)} music segment(s) scheduled before 06:00. "
+                "Pre-dawn listeners respond better to low-energy, ambient or "
+                "inspirational music than high-energy tracks."
+            ),
+            affected_segment_ids=[s.id for s in early_music],
+            suggested_fix={
+                "action": "note",
+                "note": "Consider ambient/inspirational music before 06:00.",
+                "source": "industry best practice (audience mood-energy alignment)",
+            },
+        )]
+
+    # Drive-time slots benefit from high-energy music; flag if drive-time programme
+    # is missing any upbeat content (this is informational)
+    if programme_input.programme_type == ProgrammeType.DRIVE_TIME:
+        drive_start = _hhmm_to_minutes(programme_input.start_time)
+        if drive_start >= 15 * 60:
+            # Evening drive — flag if programme is very music-light
+            music_total = sum(s.duration_minutes for s in music_segs)
+            if music_total < 5 and programme_input.total_duration_minutes >= 30:
+                return [Conflict(
+                    rule_id="C007",
+                    severity="suggestion",
+                    message=(
+                        "Evening drive-time has very little music. Listeners expect "
+                        "energy-appropriate music during the commute window 15:00–19:00."
+                    ),
+                    affected_segment_ids=[],
+                    suggested_fix={
+                        "action": "note",
+                        "note": "Add uplifting music segments during evening drive.",
+                        "source": "industry best practice (audience mood-energy alignment)",
+                    },
+                )]
+    return []
+
+
+# ---------------------------------------------------------------------------
+# C008 — Talk Fatigue
+# ---------------------------------------------------------------------------
+
+_ENGAGEMENT_TYPES = {SegmentType.VOX_POP, SegmentType.PHONE_IN_SEGMENT, SegmentType.INTERVIEW}
+_DRIVE_TALK_LIMIT  = 5  # minutes in drive-time
+_GENERAL_TALK_LIMIT = 8  # minutes any programme
+
+
+def _check_c008(
+    segments: list[Segment],
+    programme_input: ProgrammeInput,
+) -> list[Conflict]:
+    conflicts: list[Conflict] = []
+    is_drive_time = programme_input.programme_type == ProgrammeType.DRIVE_TIME
+
+    for i, seg in enumerate(segments):
+        if seg.type != SegmentType.TALK:
+            continue
+
+        limit = _DRIVE_TALK_LIMIT if is_drive_time else _GENERAL_TALK_LIMIT
+        if seg.duration_minutes <= limit:
+            continue
+
+        seg_end = _hhmm_to_minutes(seg.end_time)
+
+        # Check if an engagement segment starts within 3 minutes after this talk ends
+        has_nearby_engagement = any(
+            s.type in _ENGAGEMENT_TYPES
+            and 0 <= _hhmm_to_minutes(s.start_time) - seg_end <= 3
+            for s in segments
+        )
+        if not has_nearby_engagement:
+            conflicts.append(Conflict(
+                rule_id="C008",
+                severity="warning",
+                message=(
+                    f"Talk segment '{seg.name}' is {seg.duration_minutes} min "
+                    f"(limit {limit} min for {programme_input.programme_type.value.replace('_', ' ')}) "
+                    "without an engagement segment within 3 minutes."
+                ),
+                affected_segment_ids=[seg.id],
+                suggested_fix={
+                    "action": "insert",
+                    "type": "vox_pop",
+                    "duration_minutes": 2,
+                    "after_segment_id": seg.id,
+                    "source": (
+                        "Drive time listeners are ~30% more likely to change station "
+                        "during unbroken talk segments over 5 minutes — industry best practice"
+                    ),
+                },
+            ))
+
+    return conflicts
+
+
+# ---------------------------------------------------------------------------
+# C009 — Missing Peak Engagement
+# ---------------------------------------------------------------------------
+
+def _check_c009(
+    segments: list[Segment],
+    programme_input: ProgrammeInput,
+) -> list[Conflict]:
+    pt = programme_input.programme_type
+    if pt == ProgrammeType.MORNING_SHOW:
+        window_start, window_end = 6 * 60 + 30, 9 * 60      # 06:30–09:00
+        label = "Accra morning commute peak (06:30–09:00)"
+    elif pt == ProgrammeType.DRIVE_TIME:
+        window_start, window_end = 16 * 60 + 30, 18 * 60 + 30  # 16:30–18:30
+        label = "Accra evening commute peak (16:30–18:30)"
+    else:
+        return []
+
+    has_engagement = any(
+        s.type in _ENGAGEMENT_TYPES
+        and window_start <= _hhmm_to_minutes(s.start_time) < window_end
+        for s in segments
+    )
+
+    # Only flag if the programme actually spans the window
+    prog_start = _hhmm_to_minutes(programme_input.start_time)
+    prog_end   = prog_start + programme_input.total_duration_minutes
+    if prog_end <= window_start or prog_start >= window_end:
+        return []
+
+    if not has_engagement:
+        return [Conflict(
+            rule_id="C009",
+            severity="suggestion",
+            message=(
+                f"No high-engagement segment (interview, phone-in, vox-pop) during "
+                f"{label}. Engagement content during peak windows significantly boosts "
+                "listener retention."
+            ),
+            affected_segment_ids=[],
+            suggested_fix={
+                "action": "insert",
+                "type": "phone_in_segment",
+                "duration_minutes": 5,
+                "window": label,
+                "source": "Accra commute peak data (Caradise Ghana Traffic Analysis 2026)",
+            },
+        )]
+    return []
+
+
+# ---------------------------------------------------------------------------
+# C010 — Cultural Calendar Conflict
+# ---------------------------------------------------------------------------
+
+_GHANA_FIXED_HOLIDAYS: set[tuple[int, int]] = {
+    (1,  1),   # New Year's Day
+    (3,  6),   # Independence Day
+    (5,  1),   # Workers' Day
+    (7,  1),   # Republic Day
+    (8,  4),   # Founders' Day
+    (9, 21),   # Kwame Nkrumah Memorial Day
+    (12, 25),  # Christmas Day
+    (12, 26),  # Boxing Day
+}
+
+_ISLAMIC_EID_APPROX: dict[tuple[int, int], str] = {
+    (2024, 4, 10): "Eid al-Fitr 2024",   (2024, 6, 17): "Eid al-Adha 2024",
+    (2025, 3, 30): "Eid al-Fitr 2025",   (2025, 6,  7): "Eid al-Adha 2025",
+    (2026, 3, 20): "Eid al-Fitr 2026",   (2026, 5, 27): "Eid al-Adha 2026",
+    (2027, 3,  9): "Eid al-Fitr 2027",   (2027, 5, 17): "Eid al-Adha 2027",
+    (2028, 2, 26): "Eid al-Fitr 2028",   (2028, 5,  5): "Eid al-Adha 2028",
+}
+
+
+def _is_ghana_holiday(d: object) -> str | None:
+    """Return holiday name or None. d is a datetime.date."""
+    from dateutil.easter import easter
+
+    if (d.month, d.day) in _GHANA_FIXED_HOLIDAYS:
+        _NAMES = {
+            (1,  1): "New Year's Day",
+            (3,  6): "Independence Day",
+            (5,  1): "Workers' Day",
+            (7,  1): "Republic Day",
+            (8,  4): "Founders' Day",
+            (9, 21): "Kwame Nkrumah Memorial Day",
+            (12, 25): "Christmas Day",
+            (12, 26): "Boxing Day",
+        }
+        return _NAMES.get((d.month, d.day))
+
+    # Farmers' Day: first Friday of December
+    if d.month == 12 and d.weekday() == 4 and d.day <= 7:
+        return "Farmers' Day"
+
+    # Easter
+    easter_sunday = easter(d.year)
+    from datetime import timedelta
+    if d == easter_sunday - timedelta(days=2):
+        return "Good Friday"
+    if d == easter_sunday:
+        return "Easter Sunday"
+    if d == easter_sunday + timedelta(days=1):
+        return "Easter Monday"
+
+    # Islamic (approximate)
+    key = (d.year, d.month, d.day)
+    if key in _ISLAMIC_EID_APPROX:
+        return _ISLAMIC_EID_APPROX[key]
+
+    return None
+
+
+def _check_c010(
+    segments: list[Segment],
+    programme_input: ProgrammeInput,
+    user_settings: dict,
+) -> list[Conflict]:
+    cultural_enabled = user_settings.get("cultural_calendar_enabled", True)
+    if not cultural_enabled:
+        return []
+
+    conflicts: list[Conflict] = []
+    bd = programme_input.broadcast_date
+    start_mins = _hhmm_to_minutes(programme_input.start_time)
+
+    # Sunday morning (06:00-12:00): expect religious/gospel content
+    if bd.weekday() == 6 and 6 * 60 <= start_mins < 12 * 60:
+        is_religious = programme_input.programme_type == ProgrammeType.RELIGIOUS_SHOW
+        if not is_religious:
+            conflicts.append(Conflict(
+                rule_id="C010",
+                severity="suggestion",
+                message=(
+                    "Sunday morning programme (06:00–12:00) does not include religious "
+                    "or gospel content. Sunday morning is the primary gospel/church "
+                    "broadcasting window for Ghanaian radio."
+                ),
+                affected_segment_ids=[],
+                suggested_fix={
+                    "action": "insert",
+                    "type": "talk",
+                    "note": "Consider a gospel/devotional segment.",
+                    "source": "Ghana public holidays (official government calendar)",
+                },
+            ))
+
+    # Friday afternoon (12:00-15:00): prayer window consideration
+    prog_end = start_mins + programme_input.total_duration_minutes
+    friday_prayer_start, friday_prayer_end = 12 * 60, 15 * 60
+    if bd.weekday() == 4 and start_mins < friday_prayer_end and prog_end > friday_prayer_start:
+        advert_in_window = any(
+            s.type == SegmentType.ADVERT
+            and friday_prayer_start <= _hhmm_to_minutes(s.start_time) < friday_prayer_end
+            for s in segments
+        )
+        if advert_in_window:
+            conflicts.append(Conflict(
+                rule_id="C010",
+                severity="suggestion",
+                message=(
+                    "Advert segments detected during Friday afternoon prayer window "
+                    "(12:00–15:00). Consider reducing commercial intensity during "
+                    "Jumu'ah prayer time."
+                ),
+                affected_segment_ids=[],
+                suggested_fix={
+                    "action": "note",
+                    "note": "Move adverts outside 12:00–15:00 on Fridays.",
+                    "source": "Ghana public holidays (official government calendar)",
+                },
+            ))
+
+    # Public holidays: suggest acknowledgement
+    holiday_name = _is_ghana_holiday(bd)
+    if holiday_name:
+        has_acknowledgement = any(
+            s.type in {SegmentType.TALK, SegmentType.DRAMA, SegmentType.SCRIPTED_REPORT}
+            for s in segments
+        )
+        if not has_acknowledgement:
+            conflicts.append(Conflict(
+                rule_id="C010",
+                severity="suggestion",
+                message=(
+                    f"Today is {holiday_name} — a Ghana public holiday. No talk or "
+                    "feature segment found to acknowledge the occasion."
+                ),
+                affected_segment_ids=[],
+                suggested_fix={
+                    "action": "insert",
+                    "type": "talk",
+                    "duration_minutes": 3,
+                    "note": f"Add a {holiday_name} acknowledgement segment.",
+                    "source": "Ghana public holidays (official government calendar)",
+                },
+            ))
+
     return conflicts
 
 
