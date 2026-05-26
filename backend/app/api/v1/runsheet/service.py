@@ -8,6 +8,7 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.ai import compliance_validator, conflict_detector, notes_generator, scheduling_engine, scorer
+from app.ai.pattern_analyser import analyse_patterns
 from app.ai.recommendations.cultural_calendar import get_holiday_for_date
 from app.ai.recommendations.mood_advisor import get_mood_advice
 from app.ai.recommendations.library import LIBRARY
@@ -48,6 +49,8 @@ _SEVERITY_PENALTIES = {
     "tip":        1,
 }
 
+_SEVERITY_ORDER = {"critical": 0, "warning": 1, "suggestion": 2, "tip": 3}
+
 
 def _quality_score(recommendations: list[Recommendation]) -> float:
     """Quality score from recommendation severities — returned as 0.0-1.0."""
@@ -73,23 +76,43 @@ async def generate_runsheet(
 
     user_stats = load_user_statistics(db, str(user_id)) if user_id else {}
 
-    recommendations, _ = scorer.generate_recommendations(
+    static_recs, _ = scorer.generate_recommendations(
         segments,
         payload,
         user_stats=user_stats if user_stats else None,
         deep_dive=payload.deep_dive,
     )
 
-    score = _quality_score(recommendations)
-    stats = _compute_stats(segments, conflicts, score)
+    runsheet_id  = str(uuid.uuid4())
+    generated_at = datetime.now(timezone.utc).isoformat()
     comp = compliance_validator.validate_compliance(segments, payload)
+    score = _quality_score(static_recs)
+    stats = _compute_stats(segments, conflicts, score)
+
+    # Run pattern analysis over the user's prior history (record not yet stored).
+    pattern_recs: list[Recommendation] = []
+    if user_id:
+        provisional = RunSheetResponse(
+            runsheet_id=runsheet_id,
+            programme_input=payload,
+            segments=segments,
+            conflicts=conflicts,
+            recommendations=static_recs,
+            compliance_score=comp.compliance_score,
+            compliance_risk=comp.compliance_risk,
+            compliance_violations=comp.compliance_violations,
+            stats=stats,
+            generated_at=generated_at,
+            deep_dive_insights=[],
+        )
+        pattern_recs = analyse_patterns(user_id, db, provisional)
+        pattern_recs.sort(key=lambda r: (_SEVERITY_ORDER.get(r.severity, 99), -r.impact_score))
+
+    recommendations: list[Recommendation] = list(static_recs) + pattern_recs
 
     deep_dive_insights = _build_deep_dive_insights(
         payload, recommendations, user_stats
     ) if payload.deep_dive else []
-
-    runsheet_id  = str(uuid.uuid4())
-    generated_at = datetime.now(timezone.utc).isoformat()
 
     record = RunSheetRecord(
         id=runsheet_id,

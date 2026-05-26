@@ -136,3 +136,27 @@ class UserStatisticUpsert(BaseModel):
 
 class AccountDeleteRequest(BaseModel):
     password: str
+
+
+class ScoreTrendPoint(BaseModel):
+    date: str
+    score: float
+
+
+class UsualSetup(BaseModel):
+    station_name: str | None = None
+    presenter_name: str | None = None
+    programme_type: str | None = None
+    duration_minutes: int | None = None
+    talk_music_preference: str | None = None
+
+
+class PatternsResponse(BaseModel):
+    runsheet_count: int
+    score_trend: list[ScoreTrendPoint] = []
+    most_used_programme_type: str | None = None
+    typical_news_placement_minute: float | None = None
+    typical_first_advert_minute: float | None = None
+    average_talk_duration: float | None = None
+    best_performing_day: str | None = None
+    usual_setup: UsualSetup | None = None

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from collections import Counter
 from datetime import datetime, timedelta, timezone
 
 import bcrypt
@@ -8,17 +9,21 @@ from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy.orm import Session
 
 from app.api.v1.runsheet.models import RunSheetRecord
+from app.api.v1.runsheet.schemas import ProgrammeInput, Segment, SegmentType
 from app.api.v1.user.schemas import (
     AccountDeleteRequest,
     AuditLogEntry,
     DashboardResponse,
+    PatternsResponse,
     ProfileResponse,
     ProfileStats,
     ProfileUpdateRequest,
     RunSheetRecordSummary,
+    ScoreTrendPoint,
     UserInfo,
     UserSettings,
     UserSettingsUpdate,
+    UsualSetup,
 )
 from app.api.v1.user.statistics import router as statistics_router
 from app.dependencies import get_current_user, get_db
@@ -204,6 +209,108 @@ async def get_dashboard(
         recent_runsheets=recent_summaries,
         average_score=average_score,
         total_conflicts_resolved=total_conflicts_resolved,
+    )
+
+
+_DAY_NAMES = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+
+
+def _hhmm_to_minutes(t: str) -> int:
+    h, m = t.split(":")
+    return int(h) * 60 + int(m)
+
+
+@router.get("/patterns", response_model=PatternsResponse)
+async def get_patterns(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> PatternsResponse:
+    records = (
+        db.query(RunSheetRecord)
+        .filter(RunSheetRecord.user_id == current_user.id)
+        .order_by(RunSheetRecord.generated_at.desc())
+        .all()
+    )
+
+    if not records:
+        return PatternsResponse(runsheet_count=0)
+
+    score_trend: list[ScoreTrendPoint] = []
+    news_offsets: list[int] = []
+    advert_offsets: list[int] = []
+    talk_durations: list[int] = []
+    programme_types: list[str] = []
+    durations: list[int] = []
+    presenters: list[str] = []
+    stations: list[str] = []
+    prefs: list[str] = []
+    day_scores: dict[int, list[float]] = {}
+
+    for r in records[:20][::-1]:
+        stats = json.loads(r.stats_json)
+        prog_data = json.loads(r.programme_input_json)
+        score = float(stats.get("score", 0.0))
+        date_str = str(prog_data.get("broadcast_date", "")) or r.generated_at[:10]
+        score_trend.append(ScoreTrendPoint(date=date_str, score=score))
+
+    for r in records:
+        stats = json.loads(r.stats_json)
+        prog_data = json.loads(r.programme_input_json)
+        prog = ProgrammeInput(**prog_data)
+        segments = [Segment(**s) for s in json.loads(r.segments_json)]
+        prog_start = _hhmm_to_minutes(prog.start_time)
+
+        programme_types.append(r.programme_type)
+        durations.append(r.total_duration_minutes)
+        presenters.append(r.presenter_name)
+        stations.append(r.station_name)
+        prefs.append(prog.talk_music_preference.value)
+
+        news = next((s for s in segments if s.type == SegmentType.NEWS), None)
+        if news:
+            news_offsets.append(_hhmm_to_minutes(news.start_time) - prog_start)
+
+        ad = next((s for s in segments if s.type == SegmentType.ADVERT), None)
+        if ad:
+            advert_offsets.append(_hhmm_to_minutes(ad.start_time) - prog_start)
+
+        for s in segments:
+            if s.type in {SegmentType.TALK, SegmentType.INTERVIEW}:
+                talk_durations.append(s.duration_minutes)
+
+        day = prog.broadcast_date.weekday()
+        day_scores.setdefault(day, []).append(float(stats.get("score", 0.0)))
+
+    most_used_type = Counter(programme_types).most_common(1)[0][0] if programme_types else None
+
+    typical_news = (sum(news_offsets) / len(news_offsets)) if news_offsets else None
+    typical_advert = (sum(advert_offsets) / len(advert_offsets)) if advert_offsets else None
+    avg_talk = (sum(talk_durations) / len(talk_durations)) if talk_durations else None
+
+    best_day: str | None = None
+    if day_scores:
+        best_idx = max(day_scores.items(), key=lambda kv: sum(kv[1]) / len(kv[1]))[0]
+        best_day = _DAY_NAMES[best_idx]
+
+    usual_setup: UsualSetup | None = None
+    if records:
+        usual_setup = UsualSetup(
+            station_name=Counter(stations).most_common(1)[0][0] if stations else None,
+            presenter_name=Counter(presenters).most_common(1)[0][0] if presenters else None,
+            programme_type=most_used_type,
+            duration_minutes=Counter(durations).most_common(1)[0][0] if durations else None,
+            talk_music_preference=Counter(prefs).most_common(1)[0][0] if prefs else None,
+        )
+
+    return PatternsResponse(
+        runsheet_count=len(records),
+        score_trend=score_trend,
+        most_used_programme_type=most_used_type,
+        typical_news_placement_minute=typical_news,
+        typical_first_advert_minute=typical_advert,
+        average_talk_duration=avg_talk,
+        best_performing_day=best_day,
+        usual_setup=usual_setup,
     )
 
 
