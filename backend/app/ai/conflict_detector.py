@@ -2,6 +2,10 @@ from __future__ import annotations
 
 import uuid
 
+from app.ai.recommendations.station_profile import (
+    StationProfile,
+    all_window_labels,
+)
 from app.api.v1.runsheet.schemas import (
     Conflict,
     ProgrammeInput,
@@ -28,6 +32,7 @@ def detect_conflicts(
     segments: list[Segment],
     programme_input: ProgrammeInput,
     user_settings: dict | None = None,
+    station_profile: StationProfile | None = None,
 ) -> list[Conflict]:
     settings = user_settings or {}
     conflicts: list[Conflict] = []
@@ -39,7 +44,7 @@ def detect_conflicts(
     conflicts.extend(_check_c006(segments, programme_input))
     conflicts.extend(_check_c007(segments, programme_input))
     conflicts.extend(_check_c008(segments, programme_input))
-    conflicts.extend(_check_c009(segments, programme_input))
+    conflicts.extend(_check_c009(segments, programme_input, station_profile))
     conflicts.extend(_check_c010(segments, programme_input, settings))
     return conflicts
 
@@ -486,48 +491,80 @@ def _check_c008(
 def _check_c009(
     segments: list[Segment],
     programme_input: ProgrammeInput,
+    station_profile: StationProfile | None = None,
 ) -> list[Conflict]:
     pt = programme_input.programme_type
-    if pt == ProgrammeType.MORNING_SHOW:
-        window_start, window_end = 6 * 60 + 30, 9 * 60      # 06:30–09:00
+
+    using_station_profile = bool(station_profile and station_profile.peak_windows)
+
+    if using_station_profile:
+        windows = list(station_profile.peak_windows)
+        label = (
+            f"your station's peak listening window "
+            f"({all_window_labels(windows)})"
+        )
+        source = "user-provided station statistics"
+    elif pt == ProgrammeType.MORNING_SHOW:
+        windows = [(6 * 60 + 30, 9 * 60)]      # 06:30–09:00
         label = "Accra morning commute peak (06:30–09:00)"
+        source = "Accra commute peak data (Caradise Ghana Traffic Analysis 2026)"
     elif pt == ProgrammeType.DRIVE_TIME:
-        window_start, window_end = 16 * 60 + 30, 18 * 60 + 30  # 16:30–18:30
+        windows = [(16 * 60 + 30, 18 * 60 + 30)]  # 16:30–18:30
         label = "Accra evening commute peak (16:30–18:30)"
+        source = "Accra commute peak data (Caradise Ghana Traffic Analysis 2026)"
     else:
         return []
 
-    has_engagement = any(
-        s.type in _ENGAGEMENT_TYPES
-        and window_start <= _hhmm_to_minutes(s.start_time) < window_end
-        for s in segments
-    )
-
-    # Only flag if the programme actually spans the window
     prog_start = _hhmm_to_minutes(programme_input.start_time)
-    prog_end   = prog_start + programme_input.total_duration_minutes
-    if prog_end <= window_start or prog_start >= window_end:
+    prog_end = prog_start + programme_input.total_duration_minutes
+
+    relevant: list[tuple[int, int]] = []
+    for w_start, w_end in windows:
+        if prog_end <= w_start or prog_start >= w_end:
+            continue
+        relevant.append((w_start, w_end))
+    if not relevant:
         return []
 
-    if not has_engagement:
-        return [Conflict(
-            rule_id="C009",
-            severity="suggestion",
-            message=(
-                f"No high-engagement segment (interview, phone-in, vox-pop) during "
-                f"{label}. Engagement content during peak windows significantly boosts "
-                "listener retention."
-            ),
-            affected_segment_ids=[],
-            suggested_fix={
-                "action": "insert",
-                "type": "phone_in_segment",
-                "duration_minutes": 5,
-                "window": label,
-                "source": "Accra commute peak data (Caradise Ghana Traffic Analysis 2026)",
-            },
-        )]
-    return []
+    has_engagement = False
+    for w_start, w_end in relevant:
+        if any(
+            s.type in _ENGAGEMENT_TYPES
+            and w_start <= _hhmm_to_minutes(s.start_time) < w_end
+            for s in segments
+        ):
+            has_engagement = True
+            break
+
+    if has_engagement:
+        return []
+
+    if using_station_profile:
+        message = (
+            f"Your station's peak listening window ({all_window_labels(relevant)}) "
+            "has no high-engagement segment. Listeners are most active here — "
+            "consider adding an interview or phone-in."
+        )
+    else:
+        message = (
+            f"No high-engagement segment (interview, phone-in, vox-pop) during "
+            f"{label}. Engagement content during peak windows significantly boosts "
+            "listener retention."
+        )
+
+    return [Conflict(
+        rule_id="C009",
+        severity="suggestion",
+        message=message,
+        affected_segment_ids=[],
+        suggested_fix={
+            "action": "insert",
+            "type": "phone_in_segment",
+            "duration_minutes": 5,
+            "window": label,
+            "source": source,
+        },
+    )]
 
 
 # ---------------------------------------------------------------------------

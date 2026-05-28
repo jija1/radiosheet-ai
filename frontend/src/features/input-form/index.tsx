@@ -7,6 +7,7 @@ import { generateRunsheet } from '../../api/runsheet'
 import { useRunsheetStore } from '../../store/runsheetStore'
 import { useToastStore } from '../../store/toastStore'
 import { NavBar } from '../../components/layout/NavBar'
+import { GeneratingLoader } from '../../components/ui/GeneratingLoader'
 import { Spinner } from '../../components/ui/Spinner'
 import type { ProgrammeType, TalkMusicPreference } from '../../types/runsheet'
 import { FormField, inputError, inputNormal } from './components/FormField'
@@ -104,8 +105,17 @@ export default function InputFormPage() {
   const navItems = [
     { label: 'Dashboard', to: '/dashboard' },
     { label: 'Validate',  to: '/validate' },
+    { label: 'Help',      to: '/info' },
     { label: 'Sign out', onClick: () => { logout(); navigate('/login', { replace: true }) }, danger: true as const },
   ]
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-[#0f1117] flex items-center justify-center">
+        <GeneratingLoader deepDive={form.deep_dive} />
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen bg-[#0f1117]">
@@ -265,14 +275,7 @@ export default function InputFormPage() {
               disabled={isLoading}
               className="bg-[#2563eb] hover:bg-[#1d4ed8] disabled:opacity-60 disabled:cursor-not-allowed text-white w-full py-3 rounded-lg font-medium transition-colors mt-2 flex items-center justify-center gap-2"
             >
-              {isLoading ? (
-                <>
-                  <Spinner size={18} />
-                  Generating…
-                </>
-              ) : (
-                'Generate run-sheet with AI'
-              )}
+              Generate run-sheet with AI
             </button>
           </form>
         </div>

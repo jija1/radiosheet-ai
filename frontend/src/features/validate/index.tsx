@@ -3,6 +3,7 @@ import type { ChangeEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 
 import { validateRunsheet } from '../../api/validate'
+import { BackButton } from '../../components/ui/BackButton'
 import type { ValidateResponse } from '../../api/validate'
 import { getHistory, getRunsheet } from '../../api/runsheet'
 import { useAuthStore } from '../../store/authStore'
@@ -98,8 +99,9 @@ export default function ValidatePage() {
 
   const navItems = [
     { label: 'Dashboard',     to: '/dashboard' },
-    { label: 'New Run-sheet', to: '/' },
+    { label: 'New Run-sheet', to: '/app' },
     { label: 'Timeline',      to: '/timeline' },
+    { label: 'Help',          to: '/info' },
     { label: 'Sign out', onClick: () => { logout(); navigate('/login') }, danger: true as const },
   ]
 
@@ -108,6 +110,7 @@ export default function ValidatePage() {
       <NavBar items={navItems} />
 
       <main className="max-w-3xl mx-auto px-4 md:px-6 py-8 space-y-8">
+        <BackButton />
 
         {/* Title */}
         <div>

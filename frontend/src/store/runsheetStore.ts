@@ -23,6 +23,7 @@ interface RunsheetState {
   setRunsheet: (runsheet: RunSheetResponse) => void
   updateSegments: (segments: Segment[]) => void
   updateConflicts: (conflicts: Conflict[]) => void
+  updateRecommendations: (recommendations: Recommendation[]) => void
   updateStats: (stats: RunSheetStats) => void
   setCompliance: (score: number, risk: string, violations: ComplianceViolation[]) => void
   setLoading: (loading: boolean) => void
@@ -59,6 +60,8 @@ export const useRunsheetStore = create<RunsheetState>()((set) => ({
   updateSegments: (segments) => set({ segments }),
 
   updateConflicts: (conflicts) => set({ conflicts }),
+
+  updateRecommendations: (recommendations) => set({ recommendations }),
 
   updateStats: (stats) => set({ stats }),
 

@@ -2,8 +2,53 @@
 @tailwind components;
 @tailwind utilities;
 
+html {
+  scroll-behavior: smooth;
+}
+
 body {
   background-color: #0f1117;
   color: #e8eaf0;
   font-family: Arial, sans-serif;
+}
+
+/* Subtle global button lift on hover */
+button,
+a[role="button"],
+.btn {
+  transition: background-color 150ms ease, color 150ms ease, transform 150ms ease, box-shadow 150ms ease, border-color 150ms ease;
+}
+
+button.lift:hover,
+a.lift:hover,
+.lift:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(46, 117, 182, 0.18);
+}
+
+/* Card hover glow toward accent */
+.hover-glow {
+  transition: transform 200ms ease, box-shadow 200ms ease, border-color 200ms ease;
+}
+.hover-glow:hover {
+  transform: translateY(-2px);
+  border-color: #2E75B6;
+  box-shadow: 0 8px 22px rgba(46, 117, 182, 0.15);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  * {
+    animation: none !important;
+    transition: none !important;
+  }
+  button.lift:hover,
+  a.lift:hover,
+  .lift:hover,
+  .hover-glow:hover {
+    transform: none !important;
+    box-shadow: none !important;
+  }
 }

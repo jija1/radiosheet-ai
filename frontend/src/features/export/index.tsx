@@ -1,4 +1,5 @@
 import { Link, useNavigate } from 'react-router-dom'
+import { BackButton } from '../../components/ui/BackButton'
 
 import { useAuthStore } from '../../store/authStore'
 import { useRunsheetStore } from '../../store/runsheetStore'
@@ -131,7 +132,7 @@ export default function ExportPage() {
         <div className="text-center space-y-4">
           <p className="text-[#8891a8]">No run-sheet loaded. Generate one first.</p>
           <Link
-            to="/"
+            to="/app"
             className="inline-block bg-[#2E75B6] hover:bg-[#1a5ea8] text-white px-5 py-2 rounded-lg text-sm transition-colors"
           >
             Generate a run-sheet
@@ -189,6 +190,7 @@ export default function ExportPage() {
 
         {/* ── Printable content ────────────────────────────────────────── */}
         <div className="max-w-5xl mx-auto px-6 py-8 export-card">
+          <div className="no-print mb-2"><BackButton /></div>
 
           {/* ── Run-sheet header ─────────────────────────────────────── */}
           <div className="bg-[#13151f] border border-[#1e2133] rounded-xl p-6 mb-5 section-card">

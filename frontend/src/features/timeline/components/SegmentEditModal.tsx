@@ -57,13 +57,24 @@ export function SegmentEditModal({
 
   return (
     /* Overlay */
+    <>
+    <style>{`
+      @keyframes modal-in {
+        from { opacity: 0; transform: scale(0.95); }
+        to   { opacity: 1; transform: scale(1);    }
+      }
+      .modal-panel { animation: modal-in 150ms ease-out both; }
+      @media (prefers-reduced-motion: reduce) {
+        .modal-panel { animation: none !important; }
+      }
+    `}</style>
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60"
       onClick={onClose}
     >
       {/* Panel — stop propagation so clicks inside don't close */}
       <div
-        className="bg-[#13151f] border border-[#1e2133] rounded-xl w-full max-w-sm mx-4 p-6 space-y-5"
+        className="modal-panel bg-[#13151f] border border-[#1e2133] rounded-xl w-full max-w-sm mx-4 p-6 space-y-5"
         onClick={e => e.stopPropagation()}
       >
         {/* Header */}
@@ -163,5 +174,6 @@ export function SegmentEditModal({
         </form>
       </div>
     </div>
+    </>
   )
 }

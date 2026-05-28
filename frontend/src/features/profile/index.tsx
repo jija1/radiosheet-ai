@@ -3,6 +3,7 @@ import type { KeyboardEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 
 import { getProfile, updateProfile } from '../../api/user'
+import { BackButton } from '../../components/ui/BackButton'
 import type { ProfileData } from '../../api/user'
 import { useAuthStore } from '../../store/authStore'
 import { useToastStore } from '../../store/toastStore'
@@ -96,9 +97,10 @@ export default function ProfilePage() {
 
   const navItems = [
     { label: 'Dashboard',     to: '/dashboard' },
-    { label: 'New Run-sheet', to: '/' },
+    { label: 'New Run-sheet', to: '/app' },
     { label: 'My Station Stats', to: '/statistics' },
     { label: 'Settings',      to: '/settings' },
+    { label: 'Help',          to: '/info' },
     { label: 'Sign out', onClick: () => { logout(); navigate('/login') }, danger: true as const },
   ]
 
@@ -107,6 +109,7 @@ export default function ProfilePage() {
       <NavBar items={navItems} />
 
       <main className="max-w-3xl mx-auto px-4 md:px-6 py-8 space-y-6">
+        <BackButton />
 
         <div>
           <h1 className="text-2xl font-semibold text-[#2E75B6]">Profile</h1>

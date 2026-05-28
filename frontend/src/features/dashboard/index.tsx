@@ -1,14 +1,15 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 
-import { getDashboard } from '../../api/user'
-import type { DashboardData } from '../../api/user'
+import { getDashboard, getPatterns } from '../../api/user'
+import type { DashboardData, PatternsData } from '../../api/user'
 import { getRunsheet } from '../../api/runsheet'
 import { useAuthStore } from '../../store/authStore'
 import { useRunsheetStore } from '../../store/runsheetStore'
 import { NavBar } from '../../components/layout/NavBar'
 import { Spinner } from '../../components/ui/Spinner'
 import { getInitials } from '../profile'
+import { PatternsTab } from './PatternsTab'
 
 function formatProgrammeType(raw: string): string {
   return raw.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
@@ -21,16 +22,36 @@ function formatDate(iso: string): string {
   return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
 }
 
+function useCountUp(target: number, duration = 800): number {
+  const [count, setCount] = useState(0)
+  useEffect(() => {
+    if (target === 0) { setCount(0); return }
+    const steps = 30
+    const increment = target / steps
+    let current = 0
+    const timer = setInterval(() => {
+      current += increment
+      if (current >= target) { setCount(target); clearInterval(timer) }
+      else { setCount(Math.round(current)) }
+    }, duration / steps)
+    return () => clearInterval(timer)
+  }, [target, duration])
+  return count
+}
+
 interface StatCardProps {
   label: string
   value: string | number
 }
 
 function StatCard({ label, value }: StatCardProps) {
+  const numericTarget = typeof value === 'number' ? value : null
+  const animated = useCountUp(numericTarget ?? 0)
+  const display = numericTarget !== null ? animated : value
   return (
-    <div className="bg-[#13151f] border border-[#1e2133] rounded-xl p-5 flex flex-col gap-1">
+    <div className="hover-glow bg-[#13151f] border border-[#1e2133] rounded-xl p-5 flex flex-col gap-1">
       <span className="text-[#8891a8] text-xs uppercase tracking-wide">{label}</span>
-      <span className="text-[#e8eaf0] text-3xl font-semibold">{value}</span>
+      <span className="text-[#e8eaf0] text-3xl font-semibold">{display}</span>
     </div>
   )
 }
@@ -45,11 +66,23 @@ export default function DashboardPage() {
   const [loadingId, setLoadingId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
+  const [tab, setTab] = useState<'overview' | 'patterns'>('overview')
+  const [patterns, setPatterns] = useState<PatternsData | null>(null)
+  const [patternsError, setPatternsError] = useState<string | null>(null)
+
   useEffect(() => {
     getDashboard()
       .then(setData)
       .catch(() => setError('Could not load dashboard data.'))
   }, [])
+
+  useEffect(() => {
+    if (tab === 'patterns' && !patterns && !patternsError) {
+      getPatterns()
+        .then(setPatterns)
+        .catch(() => setPatternsError('Could not load pattern insights.'))
+    }
+  }, [tab, patterns, patternsError])
 
   async function handleLoad(id: string) {
     setLoadingId(id)
@@ -76,10 +109,11 @@ export default function DashboardPage() {
   )
 
   const navItems = [
-    { label: 'New Run-sheet', to: '/' },
+    { label: 'New Run-sheet', to: '/app' },
     { label: 'Validate',      to: '/validate' },
     { label: 'My Station Stats', to: '/statistics' },
     { label: 'Settings',      to: '/settings' },
+    { label: 'Help',          to: '/info' },
     { label: 'Sign out', onClick: () => { logout(); navigate('/login') }, danger: true as const },
   ]
 
@@ -102,8 +136,45 @@ export default function DashboardPage() {
           </p>
         )}
 
+        {/* Tabs */}
+        <div className="flex gap-6 border-b border-[#1e2133]">
+          {([
+            { key: 'overview', label: 'Overview' },
+            { key: 'patterns', label: 'Patterns' },
+          ] as const).map((t) => (
+            <button
+              key={t.key}
+              onClick={() => setTab(t.key)}
+              className={`pb-3 -mb-px text-sm font-medium border-b-2 transition-colors ${
+                tab === t.key
+                  ? 'border-[#2E75B6] text-[#e8eaf0]'
+                  : 'border-transparent text-[#8891a8] hover:text-[#e8eaf0]'
+              }`}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Patterns tab */}
+        {tab === 'patterns' && (
+          <>
+            {patternsError && (
+              <p className="text-[#ef4444] text-sm bg-[#ef444411] border border-[#ef444433] rounded px-4 py-3">
+                {patternsError}
+              </p>
+            )}
+            {!patterns && !patternsError && (
+              <div className="flex justify-center py-16">
+                <Spinner size={24} />
+              </div>
+            )}
+            {patterns && <PatternsTab data={patterns} />}
+          </>
+        )}
+
         {/* Stats cards */}
-        {data && (
+        {tab === 'overview' && data && (
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <StatCard label="Total Run-sheets" value={data.total_runsheets} />
             <StatCard
@@ -116,7 +187,7 @@ export default function DashboardPage() {
           </div>
         )}
 
-        {!data && !error && (
+        {tab === 'overview' && !data && !error && (
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             {[0, 1, 2].map((i) => (
               <div key={i} className="bg-[#13151f] border border-[#1e2133] rounded-xl p-5 h-24 animate-pulse" />
@@ -125,6 +196,7 @@ export default function DashboardPage() {
         )}
 
         {/* Recent run-sheets table */}
+        {tab === 'overview' && (
         <div>
           <h2 className="text-[#e8eaf0] font-medium mb-3">Recent Run-sheets</h2>
           <div className="bg-[#13151f] border border-[#1e2133] rounded-xl overflow-hidden">
@@ -132,7 +204,7 @@ export default function DashboardPage() {
               <p className="text-[#8891a8] text-sm text-center py-10">
                 No run-sheets yet —{' '}
                 <button
-                  onClick={() => navigate('/')}
+                  onClick={() => navigate('/app')}
                   className="text-[#2E75B6] hover:underline"
                 >
                   generate your first one
@@ -202,6 +274,7 @@ export default function DashboardPage() {
             )}
           </div>
         </div>
+        )}
       </main>
     </div>
   )

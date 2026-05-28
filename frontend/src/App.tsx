@@ -2,11 +2,14 @@ import { Route, Routes } from 'react-router-dom'
 
 import { ProtectedRoute } from './components/ProtectedRoute'
 import { ToastContainer } from './components/ui/Toast'
+import { PageTransition } from './components/ui/PageTransition'
 import LoginPage from './features/auth/LoginPage'
 import RegisterPage from './features/auth/RegisterPage'
 import DashboardPage from './features/dashboard'
 import ExportPage from './features/export'
+import InfoPage from './features/info'
 import InputFormPage from './features/input-form'
+import LandingPage from './features/landing'
 import PrivacyPage from './features/privacy'
 import ProfilePage from './features/profile'
 import SettingsPage from './features/settings'
@@ -27,39 +30,41 @@ function App() {
     <>
       <Routes>
         {/* Public routes */}
-        <Route path="/login"    element={<LoginPage />} />
-        <Route path="/register" element={<RegisterPage />} />
+        <Route path="/"         element={<PageTransition><LandingPage /></PageTransition>} />
+        <Route path="/info"     element={<PageTransition><InfoPage /></PageTransition>} />
+        <Route path="/login"    element={<PageTransition><LoginPage /></PageTransition>} />
+        <Route path="/register" element={<PageTransition><RegisterPage /></PageTransition>} />
 
         {/* Protected routes */}
-        <Route path="/dashboard" element={
-          <ProtectedRoute><DashboardPage /></ProtectedRoute>
+        <Route path="/app" element={
+          <ProtectedRoute><PageTransition><InputFormPage /></PageTransition></ProtectedRoute>
         } />
-        <Route path="/" element={
-          <ProtectedRoute><InputFormPage /></ProtectedRoute>
+        <Route path="/dashboard" element={
+          <ProtectedRoute><PageTransition><DashboardPage /></PageTransition></ProtectedRoute>
         } />
         <Route path="/timeline" element={
-          <ProtectedRoute><TimelinePage /></ProtectedRoute>
+          <ProtectedRoute><PageTransition><TimelinePage /></PageTransition></ProtectedRoute>
         } />
         <Route path="/history" element={
-          <ProtectedRoute><HistoryPage /></ProtectedRoute>
+          <ProtectedRoute><PageTransition><HistoryPage /></PageTransition></ProtectedRoute>
         } />
         <Route path="/validate" element={
-          <ProtectedRoute><ValidatePage /></ProtectedRoute>
+          <ProtectedRoute><PageTransition><ValidatePage /></PageTransition></ProtectedRoute>
         } />
         <Route path="/profile" element={
-          <ProtectedRoute><ProfilePage /></ProtectedRoute>
+          <ProtectedRoute><PageTransition><ProfilePage /></PageTransition></ProtectedRoute>
         } />
         <Route path="/settings" element={
-          <ProtectedRoute><SettingsPage /></ProtectedRoute>
+          <ProtectedRoute><PageTransition><SettingsPage /></PageTransition></ProtectedRoute>
         } />
         <Route path="/statistics" element={
-          <ProtectedRoute><StatisticsPage /></ProtectedRoute>
+          <ProtectedRoute><PageTransition><StatisticsPage /></PageTransition></ProtectedRoute>
         } />
         <Route path="/privacy" element={
-          <ProtectedRoute><PrivacyPage /></ProtectedRoute>
+          <ProtectedRoute><PageTransition><PrivacyPage /></PageTransition></ProtectedRoute>
         } />
         <Route path="/export" element={
-          <ProtectedRoute><ExportPage /></ProtectedRoute>
+          <ProtectedRoute><PageTransition><ExportPage /></PageTransition></ProtectedRoute>
         } />
       </Routes>
       <ToastContainer />

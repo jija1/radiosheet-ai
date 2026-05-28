@@ -11,6 +11,7 @@ import type { UserSettings } from '../../api/user'
 import { useAuthStore } from '../../store/authStore'
 import { useToastStore } from '../../store/toastStore'
 import { NavBar } from '../../components/layout/NavBar'
+import { BackButton } from '../../components/ui/BackButton'
 
 const RETENTION_OPTIONS = [
   { value: 30,  label: '30 days' },
@@ -105,7 +106,8 @@ export default function PrivacyPage() {
   const navItems = [
     { label: 'Dashboard',     to: '/dashboard' },
     { label: 'Settings',      to: '/settings' },
-    { label: 'New Run-sheet', to: '/' },
+    { label: 'New Run-sheet', to: '/app' },
+    { label: 'Help',          to: '/info' },
     { label: 'Sign out', onClick: () => { logout(); navigate('/login') }, danger: true as const },
   ]
 
@@ -114,6 +116,7 @@ export default function PrivacyPage() {
       <NavBar items={navItems} />
 
       <main className="max-w-3xl mx-auto px-4 md:px-6 py-8 space-y-8">
+        <BackButton />
 
         <div>
           <h1 className="text-2xl font-semibold text-[#2E75B6]">Privacy &amp; Data</h1>

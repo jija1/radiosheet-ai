@@ -15,7 +15,7 @@ export function SegmentCard({ segment, onEdit, onDelete, dragHandleProps }: Segm
 
   return (
     <div
-      className="bg-[#13151f] hover:bg-[#1a1d2e] border-b border-[#1e2133] border-l-4 transition-colors"
+      className="bg-[#13151f] hover:bg-[#1a1d2e] border-b border-[#1e2133] border-l-4 transition-all duration-150 hover:scale-[1.01] origin-left"
       style={{ borderLeftColor: segment.colour_hex }}
     >
       <div className="px-2 py-3 flex items-center gap-1">

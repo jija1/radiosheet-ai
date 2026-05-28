@@ -1,5 +1,18 @@
 import type { ComplianceViolation, Conflict } from '../../../types/runsheet'
 
+const CONFLICT_SLIDE_STYLE = `
+@keyframes conflict-in {
+  from { opacity: 0; transform: translateX(20px); }
+  to   { opacity: 1; transform: translateX(0);    }
+}
+.conflict-card {
+  animation: conflict-in 250ms ease-out both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .conflict-card { animation: none !important; }
+}
+`
+
 const SEVERITY_STYLES: Record<string, string> = {
   high:     'bg-red-900/30 text-red-400',
   moderate: 'bg-amber-900/30 text-amber-400',
@@ -29,6 +42,8 @@ export function ConflictPanel({
     : '#ef4444'
 
   return (
+    <>
+    <style>{CONFLICT_SLIDE_STYLE}</style>
     <div className="space-y-6">
 
       {/* ── Scheduling Conflicts ─────────────────────────────────────── */}
@@ -47,7 +62,7 @@ export function ConflictPanel({
             {conflicts.map((conflict, index) => (
               <div
                 key={`${conflict.rule_id}-${index}`}
-                className="bg-[#1f1520] border border-red-900/30 rounded-lg p-3"
+                className="conflict-card bg-[#1f1520] border border-red-900/30 rounded-lg p-3"
               >
                 <div className="flex items-center justify-between mb-1.5">
                   <span className="text-[#ef4444] text-xs font-mono font-semibold">
@@ -122,5 +137,6 @@ export function ConflictPanel({
         )}
       </div>
     </div>
+    </>
   )
 }

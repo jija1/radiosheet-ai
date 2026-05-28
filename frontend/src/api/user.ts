@@ -122,3 +122,32 @@ export const downloadUserExport = async (): Promise<void> => {
 
 export const deleteAccount = (password: string): Promise<void> =>
   client.delete('/api/v1/user/account', { data: { password } }).then(() => undefined)
+
+/* ── Pattern insights (Session K3) ─────────────────────────────────────── */
+
+export interface ScoreTrendPoint {
+  date: string
+  score: number
+}
+
+export interface UsualSetup {
+  station_name: string | null
+  presenter_name: string | null
+  programme_type: string | null
+  duration_minutes: number | null
+  talk_music_preference: string | null
+}
+
+export interface PatternsData {
+  runsheet_count: number
+  score_trend: ScoreTrendPoint[]
+  most_used_programme_type: string | null
+  typical_news_placement_minute: number | null
+  typical_first_advert_minute: number | null
+  average_talk_duration: number | null
+  best_performing_day: string | null
+  usual_setup: UsualSetup | null
+}
+
+export const getPatterns = (): Promise<PatternsData> =>
+  client.get<PatternsData>('/api/v1/user/patterns').then((r) => r.data)

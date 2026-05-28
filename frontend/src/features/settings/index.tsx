@@ -6,6 +6,7 @@ import type { AuditLogEntry, UserInfo, UserSettings } from '../../api/user'
 import { useAuthStore } from '../../store/authStore'
 import { useToastStore } from '../../store/toastStore'
 import { NavBar } from '../../components/layout/NavBar'
+import { BackButton } from '../../components/ui/BackButton'
 
 /* ── Helpers ────────────────────────────────────────────────────────────── */
 
@@ -93,10 +94,11 @@ export default function SettingsPage() {
 
   const navItems = [
     { label: 'Dashboard',     to: '/dashboard' },
-    { label: 'New Run-sheet', to: '/' },
+    { label: 'New Run-sheet', to: '/app' },
     { label: 'Validate',      to: '/validate' },
     { label: 'My Station Stats', to: '/statistics' },
     { label: 'Privacy & Data', to: '/privacy' },
+    { label: 'Help',          to: '/info' },
     { label: 'Sign out', onClick: () => { logout(); navigate('/login') }, danger: true as const },
   ]
 
@@ -108,6 +110,7 @@ export default function SettingsPage() {
       <NavBar items={navItems} />
 
       <main className="max-w-4xl mx-auto px-4 md:px-6 py-8 space-y-8">
+        <BackButton />
 
         <div>
           <h1 className="text-2xl font-semibold text-[#2E75B6]">Settings</h1>

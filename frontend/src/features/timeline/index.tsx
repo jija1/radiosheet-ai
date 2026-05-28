@@ -30,6 +30,7 @@ import { SegmentCard } from './components/SegmentCard'
 import { SegmentEditModal } from './components/SegmentEditModal'
 import { StatsBar } from './components/StatsBar'
 import { useApplyFix } from './hooks/useApplyFix'
+import { useApplySuggestion } from './hooks/useApplySuggestion'
 import { useUpdateSegments } from './hooks/useUpdateSegments'
 import type { Segment } from '../../types/runsheet'
 
@@ -90,6 +91,7 @@ export default function TimelinePage() {
 
   const runsheetId = currentRunsheet?.runsheet_id ?? ''
   const { applyFix } = useApplyFix(runsheetId)
+  const { applySuggestion, applyingId } = useApplySuggestion(runsheetId)
   const { saveSegments, isSaving } = useUpdateSegments(runsheetId)
 
   // Modal state
@@ -173,7 +175,7 @@ export default function TimelinePage() {
         <div className="text-center space-y-4">
           <p className="text-[#8891a8]">No run-sheet generated yet.</p>
           <Link
-            to="/"
+            to="/app"
             className="inline-block bg-[#2563eb] hover:bg-[#1d4ed8] text-white px-5 py-2 rounded-lg text-sm transition-colors"
           >
             Generate a run-sheet
@@ -225,10 +227,11 @@ export default function TimelinePage() {
   )
 
   const navItems = [
-    { label: '← Back to form', to: '/' },
+    { label: '← Back to form', to: '/app' },
     { label: 'Validate',       to: '/validate' },
     { label: 'Export ↗',       to: '/export' },
     { label: 'Settings',       to: '/settings' },
+    { label: 'Help',           to: '/info' },
     { label: 'Sign out', onClick: () => { logout(); navigate('/login', { replace: true }) }, danger: true as const },
   ]
 
@@ -255,6 +258,15 @@ export default function TimelinePage() {
 
         {/* Left: sortable segment list */}
         <div className="flex-1 overflow-y-auto flex flex-col min-w-0">
+          {/* Dashboard shortcut */}
+          <div className="px-4 pt-3 shrink-0">
+            <button
+              onClick={() => navigate('/dashboard')}
+              className="text-[#8891a8] hover:text-[#e8eaf0] text-xs transition-colors"
+            >
+              ← Dashboard
+            </button>
+          </div>
           {segments.length === 0 ? (
             <div className="flex items-center justify-center flex-1 text-[#8891a8]">
               No segments. Add one below.
@@ -305,7 +317,11 @@ export default function TimelinePage() {
             complianceViolations={complianceViolations}
           />
           <div className="border-t border-[#1e2133] pt-6">
-            <RecommendationsPanel recommendations={recommendations} />
+            <RecommendationsPanel
+              recommendations={recommendations}
+              onApplySuggestion={applySuggestion}
+              applyingId={applyingId}
+            />
           </div>
 
           {deepDiveInsights.length > 0 && (

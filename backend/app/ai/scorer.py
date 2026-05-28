@@ -45,6 +45,8 @@ def generate_recommendations(
     programme_input: ProgrammeInput,
     user_stats: dict | None = None,
     deep_dive: bool = False,
+    station_profile: object | None = None,
+    user_settings: object | None = None,
 ) -> tuple[list[Recommendation], float]:
     """
     Score four weighted dimensions (backward-compatible), merge with new engine
@@ -52,7 +54,8 @@ def generate_recommendations(
 
     No minimum count is enforced. Empty list is valid.
 
-    Optional user_stats and deep_dive flags are forwarded to the new engine.
+    Optional user_stats, deep_dive, station_profile and user_settings are
+    forwarded to the new engine.
     """
     # 1. Score every dimension
     balance_score    = _score_balance(segments, programme_input)
@@ -86,7 +89,14 @@ def generate_recommendations(
     ]
 
     # 4. New engine recommendations (different category set — no overlap)
-    new_recs = _new_engine(segments, programme_input, user_stats=user_stats, deep_dive=deep_dive)
+    new_recs = _new_engine(
+        segments,
+        programme_input,
+        user_stats=user_stats,
+        deep_dive=deep_dive,
+        station_profile=station_profile,
+        user_settings=user_settings,
+    )
 
     # 5. Merge: old categories take precedence; new recs add unique categories
     old_categories = {r.category for r in old_recs}

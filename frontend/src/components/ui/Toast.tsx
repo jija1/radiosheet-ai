@@ -7,13 +7,26 @@ const COLOUR: Record<string, string> = {
   info:    '#2E75B6',
 }
 
+const TOAST_STYLE = `
+@keyframes toast-in {
+  from { opacity: 0; transform: translateY(12px) translateX(12px); }
+  to   { opacity: 1; transform: translateY(0)    translateX(0);     }
+}
+.toast-item {
+  animation: toast-in 200ms ease-out both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .toast-item { animation: none !important; }
+}
+`
+
 function ToastItem({ toast }: { toast: Toast }) {
   const removeToast = useToastStore(s => s.removeToast)
   const colour = COLOUR[toast.type] ?? COLOUR.info
 
   return (
     <div
-      className="flex items-start gap-3 px-4 py-3 rounded-lg shadow-xl text-sm min-w-[260px] max-w-xs"
+      className="toast-item flex items-start gap-3 px-4 py-3 rounded-lg shadow-xl text-sm min-w-[260px] max-w-xs"
       style={{ backgroundColor: '#13151f', border: `1px solid ${colour}55` }}
       role="alert"
     >
@@ -35,12 +48,15 @@ export function ToastContainer() {
   if (toasts.length === 0) return null
 
   return (
-    <div className="fixed bottom-6 right-6 z-50 flex flex-col gap-2 pointer-events-none">
-      {toasts.map(t => (
-        <div key={t.id} className="pointer-events-auto">
-          <ToastItem toast={t} />
-        </div>
-      ))}
-    </div>
+    <>
+      <style>{TOAST_STYLE}</style>
+      <div className="fixed bottom-6 right-6 z-50 flex flex-col gap-2 pointer-events-none">
+        {toasts.map(t => (
+          <div key={t.id} className="pointer-events-auto">
+            <ToastItem toast={t} />
+          </div>
+        ))}
+      </div>
+    </>
   )
 }

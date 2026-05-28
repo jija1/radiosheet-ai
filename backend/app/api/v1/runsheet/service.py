@@ -12,6 +12,11 @@ from app.ai.pattern_analyser import analyse_patterns
 from app.ai.recommendations.cultural_calendar import get_holiday_for_date
 from app.ai.recommendations.mood_advisor import get_mood_advice
 from app.ai.recommendations.library import LIBRARY
+from app.ai.recommendations.station_profile import (
+    StationProfile,
+    all_window_labels,
+    build_station_profile,
+)
 from app.api.v1.runsheet.models import RunSheetRecord
 from app.api.v1.runsheet.schemas import (
     ComplianceViolation,
@@ -72,15 +77,22 @@ async def generate_runsheet(
 ) -> RunSheetResponse:
     segments: list[Segment] = scheduling_engine.generate(payload)
     segments = notes_generator.generate_notes(segments, payload)
-    conflicts: list[Conflict] = conflict_detector.detect_conflicts(segments, payload)
 
     user_stats = load_user_statistics(db, str(user_id)) if user_id else {}
+    user_settings = _load_user_settings(db, user_id)
+    station_profile = build_station_profile(user_stats or None, user_settings)
+
+    conflicts: list[Conflict] = conflict_detector.detect_conflicts(
+        segments, payload, station_profile=station_profile
+    )
 
     static_recs, _ = scorer.generate_recommendations(
         segments,
         payload,
         user_stats=user_stats if user_stats else None,
         deep_dive=payload.deep_dive,
+        station_profile=station_profile,
+        user_settings=user_settings,
     )
 
     runsheet_id  = str(uuid.uuid4())
@@ -111,7 +123,7 @@ async def generate_runsheet(
     recommendations: list[Recommendation] = list(static_recs) + pattern_recs
 
     deep_dive_insights = _build_deep_dive_insights(
-        payload, recommendations, user_stats
+        payload, recommendations, user_stats, station_profile
     ) if payload.deep_dive else []
 
     record = RunSheetRecord(
@@ -152,6 +164,7 @@ def _build_deep_dive_insights(
     payload: ProgrammeInput,
     recommendations: list[Recommendation],
     user_stats: dict,
+    station_profile: StationProfile | None = None,
 ) -> list[str]:
     insights: list[str] = []
 
@@ -173,22 +186,65 @@ def _build_deep_dive_insights(
     except Exception:
         insights.append(f"Mood advisor: time-of-day analysis attempted for {payload.start_time}.")
 
-    if user_stats:
-        peak = user_stats.get("peak_listening_window")
-        if peak and getattr(peak, "stat_value", None):
-            insights.append(
-                f"User statistics applied: custom peak window {peak.stat_value} used."
+    if station_profile and station_profile.has_any_data():
+        parts: list[str] = []
+        if station_profile.peak_windows:
+            parts.append(
+                f"{len(station_profile.peak_windows)} custom peak "
+                f"{'window' if len(station_profile.peak_windows) == 1 else 'windows'} "
+                f"({all_window_labels(station_profile.peak_windows)})"
             )
-        note = user_stats.get("local_cultural_note")
-        if note and getattr(note, "stat_value", None):
-            insights.append(f"User statistics applied: local cultural note surfaced.")
-        custom = user_stats.get("custom_recommendation")
-        if custom and getattr(custom, "stat_value", None):
+        if station_profile.audience_size_by_hour:
+            parts.append(
+                f"audience-size weighting active across "
+                f"{len(station_profile.audience_size_by_hour)} hours"
+            )
+        if station_profile.low_windows:
+            parts.append(
+                f"{len(station_profile.low_windows)} low-listenership "
+                f"{'window' if len(station_profile.low_windows) == 1 else 'windows'} respected"
+            )
+        if parts:
+            insights.append("Station profile applied: " + ", ".join(parts) + ".")
+
+        if station_profile.preferred_languages:
+            langs = ", ".join(station_profile.preferred_languages)
+            insights.append(
+                f"Local language preference ({langs}) factored into "
+                "content recommendations."
+            )
+
+        if station_profile.is_rural():
+            insights.append(
+                "Rural audience profile: agricultural and local-language "
+                "content boosted."
+            )
+        elif station_profile.is_urban():
+            insights.append(
+                "Urban audience profile: traffic, commute and social-media "
+                "engagement boosted."
+            )
+
+        if station_profile.local_notes:
+            insights.append("User statistics applied: local cultural note surfaced.")
+        if station_profile.custom_recommendations:
             insights.append("User statistics applied: custom recommendation included.")
+    else:
+        insights.append(
+            "No station statistics found — using default Ghana audience "
+            "models. Add station statistics for personalised analysis."
+        )
 
     insights.append(f"All {len(LIBRARY)} recommendation rules evaluated.")
 
     return insights
+
+
+def _load_user_settings(db: Session, user_id: str | None):
+    if not user_id:
+        return None
+    from app.models.user import User
+    return db.query(User).filter(User.id == user_id).first()
 
 
 # ---------------------------------------------------------------------------
@@ -279,14 +335,22 @@ async def update_segments(
     programme_input = ProgrammeInput(**json.loads(record.programme_input_json))
 
     segments = _recalc_times(payload.segments)
-    conflicts: list[Conflict] = conflict_detector.detect_conflicts(segments, programme_input)
 
     user_stats = load_user_statistics(db, str(user_id)) if user_id else {}
+    user_settings = _load_user_settings(db, user_id)
+    station_profile = build_station_profile(user_stats or None, user_settings)
+
+    conflicts: list[Conflict] = conflict_detector.detect_conflicts(
+        segments, programme_input, station_profile=station_profile
+    )
+
     recommendations, _ = scorer.generate_recommendations(
         segments,
         programme_input,
         user_stats=user_stats if user_stats else None,
         deep_dive=programme_input.deep_dive,
+        station_profile=station_profile,
+        user_settings=user_settings,
     )
     score = _quality_score(recommendations)
     stats = _compute_stats(segments, conflicts, score)
