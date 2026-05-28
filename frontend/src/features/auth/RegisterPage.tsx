@@ -53,7 +53,12 @@ export default function RegisterPage() {
     } catch (err: unknown) {
       const msg =
         err instanceof Error ? err.message : 'Registration failed — please try again.'
-      setError(msg)
+      const status = (err as { status?: number } | null)?.status
+      if (status === 409 || /already.*registered|already.*exists/i.test(msg)) {
+        setEmailErr(msg)
+      } else {
+        setError(msg)
+      }
     } finally {
       setLoading(false)
     }
