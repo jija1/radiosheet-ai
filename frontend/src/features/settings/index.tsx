@@ -63,7 +63,7 @@ export default function SettingsPage() {
   const [auditLog, setAuditLog]     = useState<AuditLogEntry[]>([])
   const [settings, setSettings]     = useState<UserSettings | null>(null)
   const [isLoading, setIsLoading]   = useState(true)
-  const [isSaving, setIsSaving]     = useState(false)
+  const [_isSaving, setIsSaving]     = useState(false)
   const [error, setError]           = useState<string | null>(null)
 
   useEffect(() => {
